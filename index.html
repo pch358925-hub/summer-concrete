@@ -33,14 +33,14 @@
               <h2>사진대지 목록</h2>
             </div>
             <div class="list-tools">
-              <div class="month-nav" aria-label="월별 사진대지 목록">
-                <button id="prevMonthButton" class="month-nav-button" type="button" title="이전 달">
+              <div class="month-nav" aria-label="날짜별 사진대지 목록">
+                <button id="prevMonthButton" class="month-nav-button" type="button" title="이전 날">
                   <span aria-hidden="true">‹</span>
                 </button>
-                <label class="month-filter" aria-label="월 선택">
-                  <input id="listMonthInput" type="month">
+                <label class="month-filter" aria-label="날짜 선택">
+                  <input id="listMonthInput" type="date">
                 </label>
-                <button id="nextMonthButton" class="month-nav-button" type="button" title="다음 달">
+                <button id="nextMonthButton" class="month-nav-button" type="button" title="다음 날">
                   <span aria-hidden="true">›</span>
                 </button>
               </div>
@@ -72,7 +72,15 @@
             </label>
             <label>
               <span>타설일</span>
-              <input id="pourDateInput" type="date">
+              <div class="date-stepper">
+                <button id="prevPourDateButton" class="date-step-button" type="button" title="타설일 하루 전">
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <input id="pourDateInput" type="date">
+                <button id="nextPourDateButton" class="date-step-button" type="button" title="타설일 하루 후">
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
             </label>
           </div>
 

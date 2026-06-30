@@ -30,9 +30,11 @@ alter table public.photo_entries enable row level security;
 drop policy if exists "photo_boards_public_read" on public.photo_boards;
 drop policy if exists "photo_boards_public_insert" on public.photo_boards;
 drop policy if exists "photo_boards_public_update" on public.photo_boards;
+drop policy if exists "photo_boards_public_delete" on public.photo_boards;
 drop policy if exists "photo_entries_public_read" on public.photo_entries;
 drop policy if exists "photo_entries_public_insert" on public.photo_entries;
 drop policy if exists "photo_entries_public_update" on public.photo_entries;
+drop policy if exists "photo_entries_public_delete" on public.photo_entries;
 
 create policy "photo_boards_public_read"
 on public.photo_boards for select
@@ -50,6 +52,11 @@ to anon
 using (true)
 with check (true);
 
+create policy "photo_boards_public_delete"
+on public.photo_boards for delete
+to anon
+using (true);
+
 create policy "photo_entries_public_read"
 on public.photo_entries for select
 to anon
@@ -65,6 +72,11 @@ on public.photo_entries for update
 to anon
 using (true)
 with check (true);
+
+create policy "photo_entries_public_delete"
+on public.photo_entries for delete
+to anon
+using (true);
 
 insert into storage.buckets (id, name, public)
 values ('curing-photos', 'curing-photos', true)

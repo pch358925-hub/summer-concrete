@@ -16,6 +16,8 @@ const elements = {
   projectNameInput: document.getElementById("projectNameInput"),
   pourPartInput: document.getElementById("pourPartInput"),
   pourDateInput: document.getElementById("pourDateInput"),
+  prevPourDateButton: document.getElementById("prevPourDateButton"),
+  nextPourDateButton: document.getElementById("nextPourDateButton"),
   summaryList: document.getElementById("summaryList"),
   dayGrid: document.getElementById("dayGrid"),
   printArea: document.getElementById("printArea"),
@@ -46,7 +48,7 @@ document.addEventListener("DOMContentLoaded", init);
 async function init() {
   state.shareCode = ensureShareCode();
   bindEvents();
-  setDefaultListMonth();
+  setDefaultListDate();
   setSyncStatus("저장소를 확인하는 중입니다.");
 
   if (canUseCloud()) {
@@ -64,8 +66,10 @@ function bindEvents() {
   elements.copyLinkButton.addEventListener("click", copyShareLink);
   elements.printButton.addEventListener("click", () => window.print());
   elements.newBoardButton.addEventListener("click", createNewBoard);
-  elements.prevMonthButton.addEventListener("click", () => shiftListMonth(-1));
-  elements.nextMonthButton.addEventListener("click", () => shiftListMonth(1));
+  elements.prevMonthButton.addEventListener("click", () => shiftListDate(-1));
+  elements.nextMonthButton.addEventListener("click", () => shiftListDate(1));
+  elements.prevPourDateButton.addEventListener("click", () => shiftPourDate(-1));
+  elements.nextPourDateButton.addEventListener("click", () => shiftPourDate(1));
   elements.listMonthInput.addEventListener("change", async () => {
     await loadBoardList();
     renderBoardList();
@@ -348,31 +352,35 @@ function loadLocalBoardList() {
 }
 
 function getListRange() {
-  const selectedMonth = elements.listMonthInput.value;
-  if (selectedMonth) {
-    const start = `${selectedMonth}-01`;
-    const endDate = new Date(`${start}T00:00:00`);
-    endDate.setMonth(endDate.getMonth() + 1);
-    endDate.setDate(0);
-    return { start, end: toDateInputValue(endDate) };
+  const selectedDate = elements.listMonthInput.value;
+  if (selectedDate) {
+    return { start: selectedDate, end: selectedDate };
   }
 
   return { start: "", end: "" };
 }
 
-function setDefaultListMonth() {
+function setDefaultListDate() {
   if (!elements.listMonthInput.value) {
-    elements.listMonthInput.value = toMonthInputValue(new Date());
+    elements.listMonthInput.value = toDateInputValue(new Date());
   }
 }
 
-async function shiftListMonth(offset) {
-  const current = elements.listMonthInput.value || toMonthInputValue(new Date());
-  const [year, month] = current.split("-").map(Number);
-  const next = new Date(year, month - 1 + offset, 1);
-  elements.listMonthInput.value = toMonthInputValue(next);
+async function shiftListDate(offset) {
+  const current = elements.listMonthInput.value || toDateInputValue(new Date());
+  const next = addDays(current, offset);
+  elements.listMonthInput.value = toDateInputValue(next);
   await loadBoardList();
   renderBoardList();
+}
+
+async function shiftPourDate(offset) {
+  const current = elements.pourDateInput.value || state.pourDate || toDateInputValue(new Date());
+  const next = addDays(current, offset);
+  elements.pourDateInput.value = toDateInputValue(next);
+  pullMetaFromInputs();
+  await saveMeta();
+  renderAll();
 }
 
 async function subscribeToChanges() {
@@ -639,14 +647,9 @@ function renderSummary() {
       return `
         <div class="summary-item ${done ? "done" : ""}">
           <div class="summary-day">
-            <span>
-              <strong>${day}일차</strong>
-              <small>${formatDayDate(day)}</small>
-            </span>
-            <span>
-              <strong>${done ? "완료" : "대기"}</strong>
-              <small>${done ? "사진 등록됨" : "사진 미등록"}</small>
-            </span>
+            <strong>${day}일차</strong>
+            <small>${formatDayDate(day)}</small>
+            <small class="summary-status">${done ? "사진 등록됨" : "사진 미등록"}</small>
           </div>
         </div>
       `;
@@ -669,7 +672,7 @@ function renderDayGrid() {
             ${
               hasPhoto
                 ? `<img src="${escapeAttribute(entry.photoUrl)}" alt="${day}일차 습윤양생 사진">`
-                : `<div class="empty-photo"><strong>대기</strong><span>사진 미등록</span></div>`
+                : `<div class="empty-photo"><span>사진 미등록</span></div>`
             }
           </div>
           <div class="day-card-body">
@@ -693,9 +696,7 @@ function renderDayGrid() {
                   : ""
               }
             </div>
-            <div class="uploaded-meta">
-              ${renderUploadedMeta(entry)}
-            </div>
+            ${hasPhoto ? `<div class="uploaded-meta">${renderUploadedMeta(entry)}</div>` : ""}
           </div>
         </article>
       `;
@@ -798,11 +799,13 @@ async function deleteBoard(shareCode) {
   if (!ok) return;
 
   const target = boardList.find((board) => board.shareCode === shareCode);
+  boardList = boardList.filter((board) => board.shareCode !== shareCode);
+  renderBoardList();
 
   if (dbClient) {
     const { data: board, error } = await dbClient
       .from("photo_boards")
-      .select("id")
+      .select("id, photo_entries(photo_path)")
       .eq("share_code", shareCode)
       .maybeSingle();
 
@@ -813,12 +816,18 @@ async function deleteBoard(shareCode) {
     }
 
     if (board?.id) {
-      const { error: entryError } = await dbClient.from("photo_entries").delete().eq("board_id", board.id);
       const { error: boardError } = await dbClient.from("photo_boards").delete().eq("id", board.id);
-      if (entryError || boardError) {
-        console.error(entryError || boardError);
+      if (boardError) {
+        console.error(boardError);
         showToast("사진대지 삭제에 실패했습니다.");
+        await loadBoardList();
+        renderBoardList();
         return;
+      }
+
+      const paths = (board.photo_entries || []).map((entry) => entry.photo_path).filter(Boolean);
+      if (paths.length) {
+        dbClient.storage.from(config.bucket).remove(paths).catch(console.error);
       }
     }
   } else {
@@ -939,12 +948,6 @@ function toDateInputValue(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function toMonthInputValue(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
 }
 
 function formatBytes(bytes) {

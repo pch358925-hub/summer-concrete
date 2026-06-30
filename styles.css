@@ -187,7 +187,7 @@ input:focus {
 }
 
 .month-filter {
-  min-width: 112px;
+  min-width: 138px;
 }
 
 .month-filter input {
@@ -207,6 +207,31 @@ input:focus {
   font-size: 21px;
   font-weight: 900;
   line-height: 1;
+}
+
+.date-stepper {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  gap: 4px;
+}
+
+.date-step-button {
+  width: 34px;
+  min-height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.date-step-button:hover {
+  border-color: rgba(31, 122, 90, 0.38);
+  background: var(--surface-soft);
 }
 
 .month-nav-button:hover {
@@ -321,8 +346,8 @@ input:focus {
 }
 
 .board-delete-button {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   display: inline-grid;
   place-items: center;
   border: 0;
@@ -391,7 +416,7 @@ input:focus {
 }
 
 .summary-item {
-  min-height: 52px;
+  min-height: 62px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fafbf9;
@@ -404,20 +429,13 @@ input:focus {
 }
 
 .summary-day {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  gap: 2px;
   color: var(--ink);
   font-weight: 900;
-}
-
-.summary-day > span {
-  display: grid;
-  gap: 1px;
-}
-
-.summary-day > span:last-child {
-  text-align: right;
+  text-align: center;
 }
 
 .summary-day strong {
@@ -425,17 +443,17 @@ input:focus {
 }
 
 .summary-day small {
-  color: var(--warn);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 800;
 }
 
-.summary-day > span:first-child small {
-  color: var(--muted);
+.summary-status {
+  color: var(--warn) !important;
 }
 
-.summary-item.done .summary-day > span:last-child small {
-  color: var(--accent-dark);
+.summary-item.done .summary-status {
+  color: var(--accent-dark) !important;
 }
 
 .day-grid {
@@ -528,14 +546,25 @@ input:focus {
 
 .day-card-body {
   display: grid;
-  gap: 5px;
-  padding: 7px;
+  gap: 0;
+  padding: 5px;
 }
 
 .upload-row {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.upload-row .small-button {
+  width: 100%;
+  min-height: 32px;
+  gap: 4px;
+  padding: 0 6px;
+}
+
+.upload-row .danger-button {
+  grid-column: 1 / -1;
 }
 
 .file-input {
@@ -547,7 +576,7 @@ input:focus {
 }
 
 .uploaded-meta {
-  min-height: 21px;
+  padding-top: 4px;
   color: var(--muted);
   font-size: 11px;
 }
@@ -571,6 +600,7 @@ input:focus {
 }
 
 .print-title {
+  width: 100%;
   margin: 0 0 11mm;
   text-align: center;
   font-family: "HYHeadLine-M", "HY헤드라인M", "Malgun Gothic", sans-serif;
@@ -757,6 +787,19 @@ input:focus {
   .ghost-button,
   .small-button {
     width: auto;
+  }
+
+  .board-list-item {
+    grid-template-columns: 68px minmax(0, 1fr) 44px 34px;
+  }
+
+  .day-card-body {
+    padding: 4px;
+  }
+
+  .upload-row .small-button {
+    min-height: 30px;
+    font-size: 12px;
   }
 
   .topbar-actions .primary-button,
