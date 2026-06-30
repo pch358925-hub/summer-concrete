@@ -411,16 +411,25 @@ input:focus {
 .summary-list {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 6px;
 }
 
 .summary-item {
-  min-height: 62px;
+  min-width: 0;
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  gap: 1px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fafbf9;
-  padding: 6px;
+  padding: 4px 2px;
+  color: var(--ink);
+  text-align: center;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 .summary-item.done {
@@ -428,28 +437,28 @@ input:focus {
   background: var(--accent-soft);
 }
 
-.summary-day {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  gap: 2px;
-  color: var(--ink);
-  font-weight: 900;
-  text-align: center;
+.summary-item:hover {
+  border-color: rgba(31, 122, 90, 0.38);
+  background: var(--surface-soft);
 }
 
-.summary-day strong {
-  font-size: 13px;
+.summary-item strong {
+  font-size: 12px;
+  line-height: 1.05;
 }
 
-.summary-day small {
+.summary-item small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
+  line-height: 1.05;
 }
 
 .summary-status {
   color: var(--warn) !important;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.05;
 }
 
 .summary-item.done .summary-status {
@@ -600,8 +609,9 @@ input:focus {
 }
 
 .print-title {
-  width: 100%;
-  margin: 0 0 11mm;
+  width: 152mm;
+  max-width: 100%;
+  margin: 0 auto 11mm;
   text-align: center;
   font-family: "HYHeadLine-M", "HY헤드라인M", "Malgun Gothic", sans-serif;
   font-size: 22pt;
@@ -756,7 +766,7 @@ input:focus {
   }
 
   .summary-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 

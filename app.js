@@ -74,6 +74,15 @@ function bindEvents() {
     await loadBoardList();
     renderBoardList();
   });
+  elements.summaryList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-summary-day]");
+    if (!button) return;
+
+    const card = elements.dayGrid.querySelector(`[data-day-card="${button.dataset.summaryDay}"]`);
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
   elements.boardList.addEventListener("click", (event) => {
     const deleteButton = event.target.closest("[data-delete-board-code]");
     if (deleteButton) {
@@ -339,7 +348,7 @@ function loadLocalBoardList() {
     })
     .filter(Boolean)
     .filter((board) => {
-      if (!board.pourDate) return true;
+      if (!board.pourDate) return !range.start && !range.end;
       if (range.start && board.pourDate < range.start) return false;
       if (range.end && board.pourDate > range.end) return false;
       return true;
@@ -645,13 +654,11 @@ function renderSummary() {
       const entry = getEntry(day);
       const done = Boolean(entry.photoUrl);
       return `
-        <div class="summary-item ${done ? "done" : ""}">
-          <div class="summary-day">
-            <strong>${day}일차</strong>
-            <small>${formatDayDate(day)}</small>
-            <small class="summary-status">${done ? "사진 등록됨" : "사진 미등록"}</small>
-          </div>
-        </div>
+        <button class="summary-item ${done ? "done" : ""}" type="button" data-summary-day="${day}">
+          <strong>${day}일차</strong>
+          <small>${formatCompactDayDate(day)}</small>
+          <span class="summary-status">${done ? "등록" : "미등록"}</span>
+        </button>
       `;
     })
     .join("");
@@ -767,7 +774,7 @@ function renderPrintBlock(day) {
 function renderUploadedMeta(entry) {
   if (!entry.photoUrl) return "";
   const time = entry.uploadedAt ? formatDateTime(entry.uploadedAt) : "";
-  return time ? `등록 ${escapeHtml(time)} · 자동 압축 저장` : "자동 압축 저장";
+  return time ? `등록 ${escapeHtml(time)} · 자동 압축` : "자동 압축";
 }
 
 async function copyShareLink() {
@@ -819,10 +826,33 @@ async function deleteBoard(shareCode) {
       const { error: boardError } = await dbClient.from("photo_boards").delete().eq("id", board.id);
       if (boardError) {
         console.error(boardError);
-        showToast("사진대지 삭제에 실패했습니다.");
-        await loadBoardList();
-        renderBoardList();
-        return;
+        const hidden = await hideBoardFromList(shareCode);
+        if (!hidden) {
+          showToast("사진대지 삭제에 실패했습니다.");
+          await loadBoardList();
+          renderBoardList();
+          return;
+        }
+      } else {
+        const { data: remains, error: remainsError } = await dbClient
+          .from("photo_boards")
+          .select("id")
+          .eq("share_code", shareCode)
+          .maybeSingle();
+
+        if (remainsError) {
+          console.error(remainsError);
+        }
+
+        if (remains?.id) {
+          const hidden = await hideBoardFromList(shareCode);
+          if (!hidden) {
+            showToast("사진대지를 목록에서 숨기지 못했습니다.");
+            await loadBoardList();
+            renderBoardList();
+            return;
+          }
+        }
       }
 
       const paths = (board.photo_entries || []).map((entry) => entry.photo_path).filter(Boolean);
@@ -843,6 +873,23 @@ async function deleteBoard(shareCode) {
 
   await loadBoardList();
   renderBoardList();
+}
+
+async function hideBoardFromList(shareCode) {
+  const { error } = await dbClient
+    .from("photo_boards")
+    .update({
+      pour_date: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("share_code", shareCode);
+
+  if (error) {
+    console.error(error);
+    return false;
+  }
+
+  return true;
 }
 
 function showToast(message) {
@@ -909,6 +956,12 @@ function days() {
 function formatDayDate(day) {
   if (!state.pourDate) return "타설일 미입력";
   return formatMonthDay(addDays(state.pourDate, day - 1));
+}
+
+function formatCompactDayDate(day) {
+  if (!state.pourDate) return "-";
+  const date = addDays(state.pourDate, day - 1);
+  return `${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function addDays(dateValue, offset) {
