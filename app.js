@@ -1,4 +1,4 @@
-const DEFAULT_PROJECT_NAME = "세종천안 2공구 (주)서화";
+const DEFAULT_PROJECT_NAME = "세종천안 2공구 (주)한화";
 const DAY_COUNT = 5;
 const LOCAL_PREFIX = "curing-photo-board:";
 const IMAGE_MAX_WIDTH = 1600;
@@ -9,7 +9,8 @@ const elements = {
   copyLinkButton: document.getElementById("copyLinkButton"),
   printButton: document.getElementById("printButton"),
   newBoardButton: document.getElementById("newBoardButton"),
-  showRecentButton: document.getElementById("showRecentButton"),
+  prevMonthButton: document.getElementById("prevMonthButton"),
+  nextMonthButton: document.getElementById("nextMonthButton"),
   listMonthInput: document.getElementById("listMonthInput"),
   boardList: document.getElementById("boardList"),
   projectNameInput: document.getElementById("projectNameInput"),
@@ -27,6 +28,9 @@ let dbClient = null;
 let realtimeChannel = null;
 let metaSaveTimer = null;
 let boardList = [];
+let touchStartX = 0;
+let touchStartY = 0;
+let swipeDay = null;
 
 let state = {
   shareCode: "",
@@ -42,6 +46,7 @@ document.addEventListener("DOMContentLoaded", init);
 async function init() {
   state.shareCode = ensureShareCode();
   bindEvents();
+  setDefaultListMonth();
   setSyncStatus("저장소를 확인하는 중입니다.");
 
   if (canUseCloud()) {
@@ -59,11 +64,8 @@ function bindEvents() {
   elements.copyLinkButton.addEventListener("click", copyShareLink);
   elements.printButton.addEventListener("click", () => window.print());
   elements.newBoardButton.addEventListener("click", createNewBoard);
-  elements.showRecentButton.addEventListener("click", async () => {
-    elements.listMonthInput.value = "";
-    await loadBoardList();
-    renderBoardList();
-  });
+  elements.prevMonthButton.addEventListener("click", () => shiftListMonth(-1));
+  elements.nextMonthButton.addEventListener("click", () => shiftListMonth(1));
   elements.listMonthInput.addEventListener("change", async () => {
     await loadBoardList();
     renderBoardList();
@@ -101,6 +103,53 @@ function bindEvents() {
     const day = Number(deleteButton.dataset.deleteDay);
     await deletePhoto(day);
   });
+
+  elements.dayGrid.addEventListener("touchstart", (event) => {
+    const card = event.target.closest("[data-day-card]");
+    if (!card || event.touches.length !== 1) return;
+
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    swipeDay = Number(card.dataset.dayCard);
+    card.classList.remove("swiping");
+  }, { passive: true });
+
+  elements.dayGrid.addEventListener("touchmove", (event) => {
+    if (!swipeDay || event.touches.length !== 1) return;
+
+    const card = elements.dayGrid.querySelector(`[data-day-card="${swipeDay}"]`);
+    if (!card) return;
+
+    const touch = event.touches[0];
+    const diffX = touch.clientX - touchStartX;
+    const diffY = Math.abs(touch.clientY - touchStartY);
+    if (diffX >= 0 || Math.abs(diffX) < 16 || diffY > 42) return;
+
+    card.classList.add("swiping");
+    card.style.transform = `translateX(${Math.max(diffX, -76)}px)`;
+  }, { passive: true });
+
+  elements.dayGrid.addEventListener("touchend", async () => {
+    if (!swipeDay) return;
+
+    const card = elements.dayGrid.querySelector(`[data-day-card="${swipeDay}"]`);
+    const diffX = card ? Number(card.style.transform.match(/-?\d+/)?.[0] || 0) : 0;
+    const day = swipeDay;
+
+    if (card) {
+      card.classList.remove("swiping");
+      card.style.transform = "";
+    }
+
+    touchStartX = 0;
+    touchStartY = 0;
+    swipeDay = null;
+
+    if (diffX <= -64) {
+      await deletePhoto(day);
+    }
+  });
 }
 
 function canUseCloud() {
@@ -114,7 +163,7 @@ async function setupCloudMode() {
     await loadCloudBoard();
     await loadBoardList();
     await subscribeToChanges();
-    setSyncStatus("실시간 공유 저장소에 연결되었습니다. 이 링크를 받은 사람도 같은 사진대지를 볼 수 있습니다.");
+    setSyncStatus("실시간 공유 저장소에 연결되었습니다.\n변경 사항은 자동으로 반영됩니다.");
   } catch (error) {
     console.error(error);
     showToast("실시간 연결에 실패해서 이 브라우저에만 저장합니다.");
@@ -300,9 +349,22 @@ function getListRange() {
     return { start, end: toDateInputValue(endDate) };
   }
 
-  const today = new Date();
-  const startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-  return { start: toDateInputValue(startDate), end: "" };
+  return { start: "", end: "" };
+}
+
+function setDefaultListMonth() {
+  if (!elements.listMonthInput.value) {
+    elements.listMonthInput.value = toMonthInputValue(new Date());
+  }
+}
+
+async function shiftListMonth(offset) {
+  const current = elements.listMonthInput.value || toMonthInputValue(new Date());
+  const [year, month] = current.split("-").map(Number);
+  const next = new Date(year, month - 1 + offset, 1);
+  elements.listMonthInput.value = toMonthInputValue(next);
+  await loadBoardList();
+  renderBoardList();
 }
 
 async function subscribeToChanges() {
@@ -347,7 +409,7 @@ async function subscribeToChanges() {
     )
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        setSyncStatus("실시간 공유 저장소에 연결되었습니다. 변경 사항은 자동으로 반영됩니다.");
+        setSyncStatus("실시간 공유 저장소에 연결되었습니다.\n변경 사항은 자동으로 반영됩니다.");
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         setSyncStatus("실시간 수신이 불안정합니다. 저장은 계속 시도합니다.");
       }
@@ -584,7 +646,7 @@ function renderDayGrid() {
       const entry = getEntry(day);
       const hasPhoto = Boolean(entry.photoUrl);
       return `
-        <article class="day-card ${hasPhoto ? "complete" : ""}">
+        <article class="day-card ${hasPhoto ? "complete" : ""}" data-day-card="${day}">
           <div class="day-card-header">
             <h3>${day}일차</h3>
             <span class="date-pill">${formatDayDate(day)}</span>
@@ -635,6 +697,11 @@ function renderPrintArea() {
         <div class="print-page">
           <h2 class="print-title">사진대지</h2>
           <table class="print-sheet-table">
+            <colgroup>
+              <col class="print-col-label">
+              <col class="print-col-main">
+              <col class="print-col-day">
+            </colgroup>
             <tbody>
               ${group.map(renderPrintBlock).join("")}
             </tbody>
@@ -814,6 +881,12 @@ function toDateInputValue(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function toMonthInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
 }
 
 function formatBytes(bytes) {

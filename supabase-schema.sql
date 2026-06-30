@@ -3,7 +3,7 @@ create extension if not exists "pgcrypto";
 create table if not exists public.photo_boards (
   id uuid primary key default gen_random_uuid(),
   share_code text not null unique,
-  project_name text not null default '세종천안 2공구 (주)서화',
+  project_name text not null default '세종천안 2공구 (주)한화',
   pour_part text not null default '',
   pour_date date,
   created_at timestamptz not null default now(),

@@ -31,17 +31,19 @@
           <div class="panel-heading">
             <div>
               <h2>사진대지 목록</h2>
-              <p>최근 3개월 기준으로 타설일별 등록 현황을 확인합니다.</p>
             </div>
             <div class="list-tools">
-              <label class="month-filter">
-                <span>월 선택</span>
-                <input id="listMonthInput" type="month">
-              </label>
-              <button id="showRecentButton" class="ghost-button" type="button">
-                <span class="button-icon" aria-hidden="true">↺</span>
-                <span>최근 3개월</span>
-              </button>
+              <div class="month-nav" aria-label="월별 사진대지 목록">
+                <button id="prevMonthButton" class="month-nav-button" type="button" title="이전 달">
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <label class="month-filter" aria-label="월 선택">
+                  <input id="listMonthInput" type="month">
+                </label>
+                <button id="nextMonthButton" class="month-nav-button" type="button" title="다음 달">
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
             </div>
           </div>
           <div id="boardList" class="board-list"></div>
@@ -62,11 +64,11 @@
           <div class="field-grid">
             <label>
               <span>현장명</span>
-              <input id="projectNameInput" type="text" value="세종천안 2공구 (주)서화">
+              <input id="projectNameInput" type="text" value="세종천안 2공구 (주)한화">
             </label>
             <label>
               <span>타설부위</span>
-              <input id="pourPartInput" type="text" placeholder="예: 금단구 A1(사천) 벽체 1단" autocomplete="off">
+              <input id="pourPartInput" type="text" placeholder="예: 금단교 A1(세종) 벽체 1단" autocomplete="off">
             </label>
             <label>
               <span>타설일</span>

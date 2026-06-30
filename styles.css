@@ -48,7 +48,7 @@ button {
 
 .topbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 18px;
@@ -70,7 +70,7 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: clamp(28px, 4vw, 44px);
+  font-size: clamp(18px, 4vw, 34px);
   line-height: 1.08;
   letter-spacing: 0;
 }
@@ -88,6 +88,10 @@ p {
   line-height: 1.5;
 }
 
+#syncStatus {
+  white-space: pre-line;
+}
+
 .topbar-actions,
 .list-tools {
   display: flex;
@@ -95,6 +99,13 @@ p {
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.topbar-actions {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .layout {
@@ -120,6 +131,15 @@ p {
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 14px;
+}
+
+.board-list-section .panel-heading {
+  align-items: center;
+}
+
+.board-list-section h2 {
+  margin-bottom: 0;
+  white-space: nowrap;
 }
 
 .field-grid {
@@ -153,8 +173,39 @@ input:focus {
   box-shadow: 0 0 0 3px rgba(31, 122, 90, 0.14);
 }
 
+.month-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
 .month-filter {
-  min-width: 170px;
+  min-width: 112px;
+}
+
+.month-filter input {
+  min-height: 34px;
+  padding: 0 8px;
+}
+
+.month-nav-button {
+  width: 30px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.month-nav-button:hover {
+  border-color: rgba(31, 122, 90, 0.38);
+  background: var(--surface-soft);
 }
 
 .primary-button,
@@ -171,6 +222,15 @@ input:focus {
   padding: 0 12px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.topbar-actions .primary-button,
+.topbar-actions .icon-button,
+.panel-heading > .ghost-button {
+  min-height: 32px;
+  gap: 5px;
+  padding: 0 9px;
+  font-size: 13px;
 }
 
 .primary-button {
@@ -202,8 +262,8 @@ input:focus {
 }
 
 .button-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
@@ -340,6 +400,8 @@ input:focus {
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
+  transition: transform 160ms ease;
+  touch-action: pan-y;
 }
 
 .day-card.complete {
@@ -358,7 +420,7 @@ input:focus {
 
 .day-card-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   letter-spacing: 0;
 }
 
@@ -370,7 +432,7 @@ input:focus {
   border-radius: 999px;
   background: var(--surface-soft);
   color: var(--accent-dark);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -400,6 +462,7 @@ input:focus {
   padding: 20px;
   color: var(--muted);
   text-align: center;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -426,7 +489,11 @@ input:focus {
 .uploaded-meta {
   min-height: 21px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
+}
+
+.day-card.swiping {
+  border-color: rgba(180, 58, 51, 0.42);
 }
 
 .print-area {
@@ -473,21 +540,33 @@ input:focus {
   vertical-align: middle;
 }
 
+.print-col-label {
+  width: 11mm;
+}
+
+.print-col-main {
+  width: 133mm;
+}
+
+.print-col-day {
+  width: 8mm;
+}
+
 .print-photo-row {
-  height: 82mm;
+  height: 84mm;
 }
 
 .print-info-row {
-  height: 10mm;
+  height: 10.5mm;
 }
 
 .print-content-row {
-  height: 13mm;
+  height: 10.5mm;
 }
 
 .print-photo-frame {
-  width: 120mm;
-  height: 80mm;
+  width: 149mm;
+  height: 82mm;
   display: grid;
   place-items: center;
   margin: 0 auto;
@@ -509,7 +588,6 @@ input:focus {
 }
 
 .print-label {
-  width: 22mm;
   text-align: center;
   white-space: nowrap;
 }
@@ -519,7 +597,6 @@ input:focus {
 }
 
 .print-day {
-  width: 16mm;
   text-align: center;
   white-space: nowrap;
 }
@@ -557,14 +634,28 @@ input:focus {
     flex-direction: column;
   }
 
+  .board-list-section .panel-heading {
+    align-items: center;
+    flex-direction: row;
+  }
+
   .topbar-actions,
   .list-tools {
     justify-content: stretch;
   }
 
+  .topbar-actions {
+    align-items: stretch;
+    margin-left: 0;
+  }
+
   .topbar-actions > *,
   .list-tools > * {
     flex: 1 1 auto;
+  }
+
+  .month-nav {
+    flex: 0 1 auto;
   }
 
   .field-grid,
@@ -591,7 +682,7 @@ input:focus {
   }
 
   h1 {
-    font-size: 29px;
+    font-size: 24px;
   }
 
   .summary-list,
@@ -604,6 +695,13 @@ input:focus {
   .ghost-button,
   .small-button {
     width: 100%;
+  }
+
+  .topbar-actions .primary-button,
+  .topbar-actions .icon-button,
+  .panel-heading > .ghost-button {
+    width: auto;
+    align-self: flex-end;
   }
 
   .print-page {
