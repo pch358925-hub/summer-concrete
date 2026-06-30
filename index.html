@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>서중 콘크리트 습윤양생 사진대지</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">현장 공유 사진대지</p>
+          <h1>서중 콘크리트 습윤양생</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="copyLinkButton" class="icon-button" type="button" title="공유 링크 복사">
+            <span class="button-icon" aria-hidden="true">↗</span>
+            <span>링크</span>
+          </button>
+          <button id="printButton" class="primary-button" type="button">
+            <span class="button-icon" aria-hidden="true">⎙</span>
+            <span>인쇄/PDF</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="board-list-section" aria-label="사진대지 목록">
+          <div class="panel-heading">
+            <div>
+              <h2>사진대지 목록</h2>
+              <p>최근 3개월 기준으로 타설일별 등록 현황을 확인합니다.</p>
+            </div>
+            <div class="list-tools">
+              <label class="month-filter">
+                <span>월 선택</span>
+                <input id="listMonthInput" type="month">
+              </label>
+              <button id="showRecentButton" class="ghost-button" type="button">
+                <span class="button-icon" aria-hidden="true">↺</span>
+                <span>최근 3개월</span>
+              </button>
+            </div>
+          </div>
+          <div id="boardList" class="board-list"></div>
+        </section>
+
+        <section class="control-panel" aria-label="사진대지 정보">
+          <div class="panel-heading">
+            <div>
+              <h2>사진대지 정보</h2>
+              <p id="syncStatus">저장 상태를 확인하는 중입니다.</p>
+            </div>
+            <button id="newBoardButton" class="ghost-button" type="button" title="새 사진대지 만들기">
+              <span class="button-icon" aria-hidden="true">+</span>
+              <span>새 대지</span>
+            </button>
+          </div>
+
+          <div class="field-grid">
+            <label>
+              <span>현장명</span>
+              <input id="projectNameInput" type="text" value="세종천안 2공구 (주)서화">
+            </label>
+            <label>
+              <span>타설부위</span>
+              <input id="pourPartInput" type="text" placeholder="예: 금단구 A1(사천) 벽체 1단" autocomplete="off">
+            </label>
+            <label>
+              <span>타설일</span>
+              <input id="pourDateInput" type="date">
+            </label>
+          </div>
+
+          <div id="summaryList" class="summary-list" aria-label="5일 양생 등록 현황"></div>
+        </section>
+
+        <section class="day-section" aria-label="일차별 사진 등록">
+          <div class="section-title-row">
+            <div>
+              <h2>5일 습윤양생 사진</h2>
+            </div>
+          </div>
+          <div id="dayGrid" class="day-grid"></div>
+        </section>
+
+        <section class="preview-section" aria-label="출력 미리보기">
+          <div class="section-title-row">
+            <div>
+              <h2>출력 미리보기</h2>
+            </div>
+          </div>
+          <div id="printArea" class="print-area"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
