@@ -33,16 +33,14 @@
               <h2>사진대지 목록</h2>
             </div>
             <div class="list-tools">
-              <div class="month-nav" aria-label="날짜별 사진대지 목록">
-                <button id="prevMonthButton" class="month-nav-button" type="button" title="이전 날">
-                  <span aria-hidden="true">‹</span>
-                </button>
-                <label class="month-filter" aria-label="날짜 선택">
-                  <input id="listMonthInput" type="date">
-                </label>
-                <button id="nextMonthButton" class="month-nav-button" type="button" title="다음 날">
-                  <span aria-hidden="true">›</span>
-                </button>
+              <div id="storageMeter" class="storage-meter" aria-label="저장 용량">
+                <div class="storage-meter-row">
+                  <span>용량</span>
+                  <strong id="storageMeterText">확인 중</strong>
+                </div>
+                <div class="storage-meter-track">
+                  <span id="storageMeterBar"></span>
+                </div>
               </div>
             </div>
           </div>
@@ -84,7 +82,9 @@
             </label>
           </div>
 
-          <div id="summaryList" class="summary-list" aria-label="5일 양생 등록 현황"></div>
+          <div class="summary-row">
+            <div id="summaryList" class="summary-list" aria-label="5일 양생 등록 현황"></div>
+          </div>
         </section>
 
         <section class="day-section" aria-label="일차별 사진 등록">

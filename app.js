@@ -1,6 +1,7 @@
 const DEFAULT_PROJECT_NAME = "세종천안 2공구 (주)한화";
 const DAY_COUNT = 5;
 const LOCAL_PREFIX = "curing-photo-board:";
+const META_DRAFT_PREFIX = `${LOCAL_PREFIX}meta-draft:`;
 const IMAGE_MAX_WIDTH = 1600;
 const IMAGE_MAX_HEIGHT = 1067;
 const IMAGE_QUALITY = 0.78;
@@ -9,9 +10,8 @@ const elements = {
   copyLinkButton: document.getElementById("copyLinkButton"),
   printButton: document.getElementById("printButton"),
   newBoardButton: document.getElementById("newBoardButton"),
-  prevMonthButton: document.getElementById("prevMonthButton"),
-  nextMonthButton: document.getElementById("nextMonthButton"),
-  listMonthInput: document.getElementById("listMonthInput"),
+  storageMeterText: document.getElementById("storageMeterText"),
+  storageMeterBar: document.getElementById("storageMeterBar"),
   boardList: document.getElementById("boardList"),
   projectNameInput: document.getElementById("projectNameInput"),
   pourPartInput: document.getElementById("pourPartInput"),
@@ -48,13 +48,16 @@ document.addEventListener("DOMContentLoaded", init);
 async function init() {
   state.shareCode = ensureShareCode();
   bindEvents();
-  setDefaultListDate();
   setSyncStatus("저장소를 확인하는 중입니다.");
 
   if (canUseCloud()) {
     await setupCloudMode();
   } else {
-    loadLocalBoard();
+    if (state.shareCode) {
+      loadLocalBoard();
+    } else {
+      resetCurrentBoard();
+    }
     await loadBoardList();
     setSyncStatus("현재 브라우저에만 저장됩니다. 실시간 공유는 config.js 설정 후 사용할 수 있습니다.");
   }
@@ -66,14 +69,8 @@ function bindEvents() {
   elements.copyLinkButton.addEventListener("click", copyShareLink);
   elements.printButton.addEventListener("click", () => window.print());
   elements.newBoardButton.addEventListener("click", createNewBoard);
-  elements.prevMonthButton.addEventListener("click", () => shiftListDate(-1));
-  elements.nextMonthButton.addEventListener("click", () => shiftListDate(1));
   elements.prevPourDateButton.addEventListener("click", () => shiftPourDate(-1));
   elements.nextPourDateButton.addEventListener("click", () => shiftPourDate(1));
-  elements.listMonthInput.addEventListener("change", async () => {
-    await loadBoardList();
-    renderBoardList();
-  });
   elements.summaryList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-summary-day]");
     if (!button) return;
@@ -99,9 +96,19 @@ function bindEvents() {
   [elements.projectNameInput, elements.pourPartInput, elements.pourDateInput].forEach((input) => {
     input.addEventListener("input", () => {
       pullMetaFromInputs();
+      saveMetaDraft();
       queueMetaSave();
-      renderAll();
+      renderMetaPreview();
     });
+    input.addEventListener("change", flushMetaSave);
+    input.addEventListener("blur", flushMetaSave);
+  });
+
+  window.addEventListener("pagehide", flushMetaSave);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      flushMetaSave();
+    }
   });
 
   elements.dayGrid.addEventListener("change", async (event) => {
@@ -180,10 +187,17 @@ async function setupCloudMode() {
   try {
     await ensureSupabaseClient();
     dbClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-    await loadCloudBoard();
+    if (state.shareCode) {
+      const usedDraft = await loadCloudBoard();
+      if (usedDraft) {
+        await saveMeta();
+      }
+      await subscribeToChanges();
+    } else {
+      resetCurrentBoard();
+    }
     await loadBoardList();
-    await subscribeToChanges();
-    setSyncStatus("실시간 공유 저장소에 연결되었습니다.\n변경 사항은 자동으로 반영됩니다.");
+    setSyncStatus("실시간 공유 저장소에 연결되었습니다.");
   } catch (error) {
     console.error(error);
     showToast("실시간 연결에 실패해서 이 브라우저에만 저장합니다.");
@@ -196,17 +210,24 @@ async function setupCloudMode() {
 
 function ensureShareCode() {
   const url = new URL(window.location.href);
-  const current = url.searchParams.get("board");
-  if (current) return current;
-
-  const next = createShareCode();
-  url.searchParams.set("board", next);
-  window.history.replaceState({}, "", url.toString());
-  return next;
+  return url.searchParams.get("board") || "";
 }
 
 function createShareCode() {
   return `board-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function resetCurrentBoard(options = {}) {
+  const shareCode = options.keepShareCode ? state.shareCode : "";
+  state = {
+    shareCode,
+    boardId: null,
+    projectName: DEFAULT_PROJECT_NAME,
+    pourPart: "",
+    pourDate: toDateInputValue(new Date()),
+    entries: {},
+  };
+  syncInputsFromState();
 }
 
 function loadLocalBoard() {
@@ -230,11 +251,14 @@ function loadLocalBoard() {
     state.pourDate = toDateInputValue(new Date());
   }
 
+  applyMetaDraft("");
   syncInputsFromState();
   saveLocalBoard();
 }
 
-async function loadCloudBoard() {
+async function loadCloudBoard(options = {}) {
+  const shouldSyncInputs = options.syncInputs !== false;
+  const createIfMissing = options.createIfMissing === true;
   const { data: board, error } = await dbClient
     .from("photo_boards")
     .select("*")
@@ -248,7 +272,7 @@ async function loadCloudBoard() {
     state.projectName = normalizeProjectName(board.project_name || DEFAULT_PROJECT_NAME);
     state.pourPart = board.pour_part || "";
     state.pourDate = board.pour_date || toDateInputValue(new Date());
-  } else {
+  } else if (createIfMissing) {
     const { data: created, error: insertError } = await dbClient
       .from("photo_boards")
       .insert({
@@ -266,10 +290,20 @@ async function loadCloudBoard() {
     state.projectName = normalizeProjectName(created.project_name || DEFAULT_PROJECT_NAME);
     state.pourPart = created.pour_part || "";
     state.pourDate = created.pour_date || toDateInputValue(new Date());
+  } else {
+    resetCurrentBoard({ keepShareCode: true });
   }
 
+  const usedDraft = shouldSyncInputs && (board || createIfMissing) ? applyMetaDraft(board?.updated_at || "") : false;
+  if (!board && !createIfMissing) {
+    clearMetaDraft();
+  }
   await loadCloudEntries();
-  syncInputsFromState();
+  if (shouldSyncInputs) {
+    syncInputsFromState();
+  }
+
+  return usedDraft;
 }
 
 async function loadCloudEntries() {
@@ -307,6 +341,7 @@ async function loadCloudBoardList() {
   let query = dbClient
     .from("photo_boards")
     .select("id, share_code, project_name, pour_part, pour_date, updated_at, photo_entries(day_no, photo_url)")
+    .not("pour_date", "is", null)
     .order("pour_date", { ascending: false })
     .order("updated_at", { ascending: false });
 
@@ -319,7 +354,7 @@ async function loadCloudBoardList() {
   boardList = (data || []).map((board) => ({
     shareCode: board.share_code,
     projectName: normalizeProjectName(board.project_name || DEFAULT_PROJECT_NAME),
-    pourPart: board.pour_part || "타설부위 미입력",
+    pourPart: board.pour_part || "미입력",
     pourDate: board.pour_date || "",
     updatedAt: board.updated_at || "",
     completedCount: (board.photo_entries || []).filter((entry) => entry.photo_url).length,
@@ -329,7 +364,7 @@ async function loadCloudBoardList() {
 function loadLocalBoardList() {
   const range = getListRange();
   boardList = Object.keys(localStorage)
-    .filter((key) => key.startsWith(LOCAL_PREFIX))
+    .filter((key) => key.startsWith(LOCAL_PREFIX) && !key.startsWith(META_DRAFT_PREFIX))
     .map((key) => {
       try {
         const parsed = JSON.parse(localStorage.getItem(key) || "{}");
@@ -337,7 +372,7 @@ function loadLocalBoardList() {
         return {
           shareCode: key.slice(LOCAL_PREFIX.length),
           projectName: normalizeProjectName(parsed.projectName || DEFAULT_PROJECT_NAME),
-          pourPart: parsed.pourPart || "타설부위 미입력",
+          pourPart: parsed.pourPart || "미입력",
           pourDate: parsed.pourDate || "",
           updatedAt: parsed.updatedAt || "",
           completedCount: Object.values(entries).filter((entry) => entry && entry.photoUrl).length,
@@ -348,7 +383,7 @@ function loadLocalBoardList() {
     })
     .filter(Boolean)
     .filter((board) => {
-      if (!board.pourDate) return !range.start && !range.end;
+      if (!board.pourDate) return false;
       if (range.start && board.pourDate < range.start) return false;
       if (range.end && board.pourDate > range.end) return false;
       return true;
@@ -361,26 +396,7 @@ function loadLocalBoardList() {
 }
 
 function getListRange() {
-  const selectedDate = elements.listMonthInput.value;
-  if (selectedDate) {
-    return { start: selectedDate, end: selectedDate };
-  }
-
   return { start: "", end: "" };
-}
-
-function setDefaultListDate() {
-  if (!elements.listMonthInput.value) {
-    elements.listMonthInput.value = toDateInputValue(new Date());
-  }
-}
-
-async function shiftListDate(offset) {
-  const current = elements.listMonthInput.value || toDateInputValue(new Date());
-  const next = addDays(current, offset);
-  elements.listMonthInput.value = toDateInputValue(next);
-  await loadBoardList();
-  renderBoardList();
 }
 
 async function shiftPourDate(offset) {
@@ -409,11 +425,17 @@ async function subscribeToChanges() {
       },
       async (payload) => {
         if (payload.new?.share_code === state.shareCode || payload.old?.share_code === state.shareCode) {
-          await loadCloudBoard();
-          renderAll();
+          const inputFocused = isMetaInputFocused();
+          await loadCloudBoard({ syncInputs: !inputFocused });
+          if (inputFocused) {
+            renderMetaPreview();
+          } else {
+            renderAll();
+          }
         }
         await loadBoardList();
         renderBoardList();
+        renderStorageMeter();
       }
     )
     .on(
@@ -430,11 +452,12 @@ async function subscribeToChanges() {
         }
         await loadBoardList();
         renderBoardList();
+        renderStorageMeter();
       }
     )
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        setSyncStatus("실시간 공유 저장소에 연결되었습니다.\n변경 사항은 자동으로 반영됩니다.");
+        setSyncStatus("실시간 공유 저장소에 연결되었습니다.");
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         setSyncStatus("실시간 수신이 불안정합니다. 저장은 계속 시도합니다.");
       }
@@ -449,8 +472,8 @@ function syncInputsFromState() {
 }
 
 function pullMetaFromInputs() {
-  state.projectName = normalizeProjectName(elements.projectNameInput.value.trim() || DEFAULT_PROJECT_NAME);
-  state.pourPart = elements.pourPartInput.value.trim();
+  state.projectName = normalizeProjectName(elements.projectNameInput.value || DEFAULT_PROJECT_NAME);
+  state.pourPart = elements.pourPartInput.value;
   state.pourDate = elements.pourDateInput.value || "";
 }
 
@@ -459,8 +482,18 @@ function queueMetaSave() {
   metaSaveTimer = window.setTimeout(saveMeta, 300);
 }
 
+function flushMetaSave() {
+  pullMetaFromInputs();
+  saveMetaDraft();
+  window.clearTimeout(metaSaveTimer);
+  metaSaveTimer = null;
+  saveMeta().catch(console.error);
+}
+
 async function saveMeta() {
   pullMetaFromInputs();
+  if (!state.shareCode) return;
+  if (dbClient && !state.boardId) return;
 
   if (dbClient && state.boardId) {
     const { error } = await dbClient
@@ -479,16 +512,73 @@ async function saveMeta() {
       return;
     }
 
+    clearMetaDraft();
     await loadBoardList();
     renderBoardList();
+    renderStorageMeter();
   } else {
     saveLocalBoard();
+    clearMetaDraft();
     await loadBoardList();
     renderBoardList();
+    renderStorageMeter();
+  }
+}
+
+function saveMetaDraft() {
+  try {
+    localStorage.setItem(
+      META_DRAFT_PREFIX + state.shareCode,
+      JSON.stringify({
+        projectName: state.projectName,
+        pourPart: state.pourPart,
+        pourDate: state.pourDate,
+        updatedAt: new Date().toISOString(),
+      })
+    );
+  } catch (error) {
+    console.warn("Meta draft save failed", error);
+  }
+}
+
+function applyMetaDraft(remoteUpdatedAt) {
+  try {
+    const saved = localStorage.getItem(META_DRAFT_PREFIX + state.shareCode);
+    if (!saved) return false;
+
+    const draft = JSON.parse(saved);
+    const draftTime = Date.parse(draft.updatedAt || "");
+    const remoteTime = Date.parse(remoteUpdatedAt || "");
+    if (remoteUpdatedAt && (!draftTime || draftTime <= remoteTime)) {
+      clearMetaDraft();
+      return false;
+    }
+
+    state.projectName = normalizeProjectName(draft.projectName || DEFAULT_PROJECT_NAME);
+    state.pourPart = typeof draft.pourPart === "string" ? draft.pourPart : "";
+    state.pourDate = draft.pourDate || state.pourDate || toDateInputValue(new Date());
+    return true;
+  } catch (error) {
+    console.warn("Meta draft apply failed", error);
+    clearMetaDraft();
+    return false;
+  }
+}
+
+function clearMetaDraft() {
+  try {
+    localStorage.removeItem(META_DRAFT_PREFIX + state.shareCode);
+  } catch {
+    // Ignore storage cleanup errors.
   }
 }
 
 async function saveEntry(day) {
+  if (!state.shareCode || (dbClient && !state.boardId)) {
+    showToast("새 대지를 먼저 만들어 주세요.");
+    return;
+  }
+
   const entry = getEntry(day);
 
   if (dbClient && state.boardId) {
@@ -523,6 +613,8 @@ async function saveEntry(day) {
 }
 
 function saveLocalBoard() {
+  if (!state.shareCode) return;
+
   try {
     localStorage.setItem(
       LOCAL_PREFIX + state.shareCode,
@@ -534,6 +626,7 @@ function saveLocalBoard() {
         entries: state.entries,
       })
     );
+    renderStorageMeter();
   } catch (error) {
     console.error(error);
     showToast("브라우저 저장공간이 부족합니다. 실시간 저장소 연결이 필요합니다.");
@@ -541,6 +634,11 @@ function saveLocalBoard() {
 }
 
 async function handlePhotoUpload(day, file) {
+  if (!state.shareCode || (dbClient && !state.boardId)) {
+    showToast("새 대지를 먼저 만들어 주세요.");
+    return;
+  }
+
   if (!file.type.startsWith("image/")) {
     showToast("이미지 파일만 등록할 수 있습니다.");
     return;
@@ -554,6 +652,7 @@ async function handlePhotoUpload(day, file) {
     entry.photoUrl = image.dataUrl;
     entry.photoPath = "";
     entry.uploadedAt = new Date().toISOString();
+    entry.sizeBytes = image.blob.size;
 
     if (dbClient && state.boardId) {
       const path = `${state.shareCode}/day-${day}-${Date.now()}.jpg`;
@@ -593,6 +692,7 @@ async function deletePhoto(day) {
   entry.photoUrl = "";
   entry.photoPath = "";
   entry.uploadedAt = "";
+  entry.sizeBytes = 0;
 
   if (dbClient && previousPath) {
     dbClient.storage.from(config.bucket).remove([previousPath]).catch(console.error);
@@ -616,6 +716,13 @@ function getEntry(day) {
 
 function renderAll() {
   renderBoardList();
+  renderSummary();
+  renderDayGrid();
+  renderPrintArea();
+  renderStorageMeter();
+}
+
+function renderMetaPreview() {
   renderSummary();
   renderDayGrid();
   renderPrintArea();
@@ -662,6 +769,29 @@ function renderSummary() {
       `;
     })
     .join("");
+}
+
+async function renderStorageMeter() {
+  if (!elements.storageMeterText || !elements.storageMeterBar) return;
+
+  const knownPhotoBytes = getKnownPhotoBytes();
+  let usage = knownPhotoBytes;
+  let quota = 50 * 1024 * 1024;
+
+  if (navigator.storage?.estimate) {
+    try {
+      const estimate = await navigator.storage.estimate();
+      usage = Math.max(usage, estimate.usage || 0);
+      quota = estimate.quota || quota;
+    } catch {
+      // Use the app-specific fallback when the browser estimate is unavailable.
+    }
+  }
+
+  const percent = quota ? Math.min(100, Math.round((usage / quota) * 100)) : 0;
+  elements.storageMeterText.textContent = `${formatBytes(usage)} / ${formatBytes(quota)}`;
+  elements.storageMeterBar.style.width = `${percent}%`;
+  elements.storageMeterBar.classList.toggle("warn", percent >= 80);
 }
 
 function renderDayGrid() {
@@ -744,7 +874,7 @@ function renderPrintBlock(day) {
   }
 
   const entry = getEntry(day);
-  const locationText = state.pourPart || "타설부위 미입력";
+  const locationText = state.pourPart || "";
   const contentText = "습윤양생";
 
   return `
@@ -787,10 +917,34 @@ async function copyShareLink() {
   }
 }
 
-function createNewBoard() {
+async function createNewBoard() {
+  window.clearTimeout(metaSaveTimer);
+
   const url = new URL(window.location.href);
-  url.searchParams.set("board", createShareCode());
-  window.location.href = url.toString();
+  const shareCode = createShareCode();
+  url.searchParams.set("board", shareCode);
+  window.history.pushState({}, "", url.toString());
+
+  state = {
+    shareCode,
+    boardId: null,
+    projectName: DEFAULT_PROJECT_NAME,
+    pourPart: "",
+    pourDate: toDateInputValue(new Date()),
+    entries: {},
+  };
+
+  if (dbClient) {
+    await loadCloudBoard({ createIfMissing: true });
+    await subscribeToChanges();
+  } else {
+    syncInputsFromState();
+    saveLocalBoard();
+  }
+
+  await loadBoardList();
+  renderAll();
+  showToast("새 사진대지를 만들었습니다.");
 }
 
 function openBoard(shareCode) {
@@ -862,17 +1016,42 @@ async function deleteBoard(shareCode) {
     }
   } else {
     localStorage.removeItem(LOCAL_PREFIX + shareCode);
+    localStorage.removeItem(META_DRAFT_PREFIX + shareCode);
+  }
+
+  try {
+    localStorage.removeItem(META_DRAFT_PREFIX + shareCode);
+  } catch {
+    // Ignore storage cleanup errors.
   }
 
   showToast(`${target?.pourPart || "사진대지"}를 삭제했습니다.`);
 
+  await loadBoardList();
+
   if (shareCode === state.shareCode) {
-    createNewBoard();
+    openNextBoardAfterDelete();
     return;
   }
 
-  await loadBoardList();
   renderBoardList();
+  renderStorageMeter();
+}
+
+function openNextBoardAfterDelete() {
+  const nextBoard = boardList.find((board) => board.shareCode !== state.shareCode);
+  if (nextBoard) {
+    openBoard(nextBoard.shareCode);
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("board");
+  window.history.replaceState({}, "", url.toString());
+
+  resetCurrentBoard();
+  renderAll();
+  showToast("삭제했습니다. 새 대지를 누르면 새 사진대지가 만들어집니다.");
 }
 
 async function hideBoardFromList(shareCode) {
@@ -905,6 +1084,37 @@ function setSyncStatus(message) {
   if (elements.syncStatus) {
     elements.syncStatus.textContent = message;
   }
+}
+
+function isMetaInputFocused() {
+  return [elements.projectNameInput, elements.pourPartInput, elements.pourDateInput].includes(document.activeElement);
+}
+
+function getKnownPhotoBytes() {
+  const entryBytes = Object.values(state.entries || {}).reduce((sum, entry) => {
+    if (!entry) return sum;
+    if (entry.sizeBytes) return sum + Number(entry.sizeBytes);
+    if (entry.photoUrl && entry.photoUrl.startsWith("data:")) return sum + estimateDataUrlBytes(entry.photoUrl);
+    return sum;
+  }, 0);
+
+  let localBytes = 0;
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(LOCAL_PREFIX))
+      .forEach((key) => {
+        localBytes += key.length + (localStorage.getItem(key) || "").length;
+      });
+  } catch {
+    localBytes = 0;
+  }
+
+  return Math.max(entryBytes, localBytes * 2);
+}
+
+function estimateDataUrlBytes(value) {
+  const base64 = String(value).split(",")[1] || "";
+  return Math.round((base64.length * 3) / 4);
 }
 
 function resizeImage(file, maxWidth = IMAGE_MAX_WIDTH, maxHeight = IMAGE_MAX_HEIGHT) {
