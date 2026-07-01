@@ -948,16 +948,14 @@ function renderDayGrid() {
           </div>
           <div class="day-card-body">
             <div class="upload-row">
-              <label class="small-button file-button">
-                <span class="button-icon" aria-hidden="true">▣</span>
-                <span>촬영</span>
-                <input class="file-input" data-day="${day}" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" capture="environment">
-              </label>
-              <label class="small-button file-button">
-                <span class="button-icon" aria-hidden="true">＋</span>
-                <span>첨부</span>
-                <input class="file-input" data-day="${day}" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple>
-              </label>
+              <div class="file-control">
+                <label class="file-control-title" for="camera-${day}">▣ 촬영</label>
+                <input id="camera-${day}" class="file-input" data-day="${day}" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" capture="environment" aria-label="${day}일차 사진 촬영">
+              </div>
+              <div class="file-control">
+                <label class="file-control-title" for="gallery-${day}">＋ 첨부</label>
+                <input id="gallery-${day}" class="file-input" data-day="${day}" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple aria-label="${day}일차 사진 첨부">
+              </div>
               ${
                 hasPhoto
                   ? `<button class="small-button danger-button" type="button" data-delete-day="${day}">

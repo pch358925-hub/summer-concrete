@@ -656,25 +656,42 @@ input:focus {
   padding: 0 6px;
 }
 
-.file-button {
-  position: relative;
-  cursor: pointer;
-  overflow: hidden;
-  -webkit-tap-highlight-color: transparent;
-}
-
 .upload-row .danger-button {
   grid-column: 1 / -1;
 }
 
+.file-control {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 5px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.file-control-title {
+  display: block;
+  margin-bottom: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+}
+
 .file-input {
-  position: absolute;
-  inset: 0;
+  display: block;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
-  opacity: 0;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  padding: 4px;
+  color: var(--ink);
   cursor: pointer;
+  font-size: 13px;
 }
 
 .uploaded-meta {
