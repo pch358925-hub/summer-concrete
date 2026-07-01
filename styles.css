@@ -662,12 +662,18 @@ input:focus {
 
 .file-control {
   min-width: 0;
-  display: grid;
+  min-height: 32px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  padding: 5px;
+  padding: 0 6px;
+  cursor: pointer;
+  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -675,23 +681,21 @@ input:focus {
   display: block;
   margin-bottom: 0;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1;
   text-align: center;
 }
 
 .file-input {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  min-height: 34px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #fff;
-  padding: 4px;
-  color: var(--ink);
+  height: 100%;
+  border: 0;
+  opacity: 0;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 32px;
 }
 
 .uploaded-meta {

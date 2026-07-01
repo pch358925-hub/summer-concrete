@@ -40,6 +40,8 @@ let boardListRenderFrame = 0;
 let isBoardSearchComposing = false;
 let isFilePickerOpen = false;
 let filePickerClearTimer = null;
+let pendingRealtimeRefresh = false;
+let activePhotoMutationCount = 0;
 
 let state = {
   shareCode: "",
@@ -170,6 +172,7 @@ function bindEvents() {
     if (!day || !files.length) return;
 
     await handlePhotoSelection(day, files);
+    await flushPendingRealtimeRefresh();
   });
 
   elements.dayGrid.addEventListener("click", async (event) => {
@@ -274,7 +277,7 @@ async function loadCloudBoard(options = {}) {
   const createIfMissing = options.createIfMissing === true;
   const { data: board, error } = await dbClient
     .from("photo_boards")
-    .select("*")
+    .select("*, photo_entries(*)")
     .eq("share_code", state.shareCode)
     .maybeSingle();
 
@@ -313,7 +316,11 @@ async function loadCloudBoard(options = {}) {
   if (!board && !createIfMissing) {
     clearMetaDraft();
   }
-  await loadCloudEntries();
+  if (board?.photo_entries) {
+    applyCloudEntries(board.photo_entries);
+  } else {
+    await loadCloudEntries();
+  }
   if (shouldSyncInputs) {
     syncInputsFromState();
   }
@@ -322,6 +329,7 @@ async function loadCloudBoard(options = {}) {
 }
 
 async function loadCloudEntries() {
+  state.entries = {};
   if (!state.boardId) return;
 
   const { data, error } = await dbClient
@@ -332,8 +340,12 @@ async function loadCloudEntries() {
 
   if (error) throw error;
 
+  applyCloudEntries(data || []);
+}
+
+function applyCloudEntries(entries) {
   state.entries = {};
-  (data || []).forEach((row) => {
+  (entries || []).forEach((row) => {
     state.entries[row.day_no] = {
       dayNo: row.day_no,
       photoUrl: row.photo_url || "",
@@ -349,6 +361,7 @@ async function loadBoardList() {
   } else {
     loadLocalBoardList();
   }
+  await reconcileCurrentBoardEntries();
 }
 
 async function loadCloudBoardList() {
@@ -418,6 +431,23 @@ function loadLocalBoardList() {
     });
 }
 
+async function reconcileCurrentBoardEntries() {
+  if (!state.shareCode) return;
+
+  const current = boardList.find((board) => board.shareCode === state.shareCode);
+  if (!current) return;
+
+  const detailCount = Object.values(state.entries || {}).filter((entry) => entry?.photoUrl).length;
+  const listCount = Number(current.completedCount || 0);
+  if (detailCount === listCount) return;
+
+  if (dbClient && state.boardId) {
+    await loadCloudEntries();
+  } else if (!dbClient) {
+    loadLocalBoard();
+  }
+}
+
 function getListRange() {
   return { start: "", end: "" };
 }
@@ -447,6 +477,11 @@ async function subscribeToChanges() {
         table: "photo_boards",
       },
       async (payload) => {
+        if (shouldDeferRealtimeRefresh()) {
+          pendingRealtimeRefresh = true;
+          return;
+        }
+
         if (payload.new?.share_code === state.shareCode || payload.old?.share_code === state.shareCode) {
           const inputFocused = isMetaInputFocused();
           await loadCloudBoard({ syncInputs: !inputFocused });
@@ -469,6 +504,11 @@ async function subscribeToChanges() {
         table: "photo_entries",
       },
       async (payload) => {
+        if (shouldDeferRealtimeRefresh()) {
+          pendingRealtimeRefresh = true;
+          return;
+        }
+
         if (payload.new?.board_id === state.boardId || payload.old?.board_id === state.boardId) {
           await loadCloudEntries();
           renderAll();
@@ -676,6 +716,7 @@ async function handlePhotoUpload(day, file) {
     return false;
   }
 
+  beginPhotoMutation();
   try {
     showToast(`${day}일차 사진을 압축하는 중입니다.`);
     const image = await preparePhotoEntry(day, file);
@@ -688,6 +729,8 @@ async function handlePhotoUpload(day, file) {
     console.error(error);
     showToast("사진 등록에 실패했습니다. 다른 사진이나 JPG 사진으로 다시 시도해 주세요.");
     return false;
+  } finally {
+    await endPhotoMutation();
   }
 }
 
@@ -708,39 +751,60 @@ async function handlePhotoSelection(startDay, files) {
     return;
   }
 
-  const targetDays = days().filter((day) => day >= startDay).slice(0, imageFiles.length);
+  const targetDays = days().filter((day) => day >= startDay);
   if (!targetDays.length) return;
 
-  const overwriteCount = targetDays.filter((day) => getEntry(day).photoUrl).length;
+  const maxCount = Math.min(targetDays.length, imageFiles.length);
+  const overwriteCount = targetDays.slice(0, maxCount).filter((day) => getEntry(day).photoUrl).length;
   if (overwriteCount) {
     const ok = window.confirm(`기존 사진 ${overwriteCount}장을 새 사진으로 바꿀까요?`);
     if (!ok) return;
   }
 
   let completed = 0;
+  let failed = 0;
+  let fileIndex = 0;
+  beginPhotoMutation();
   try {
-    showToast(`${targetDays[0]}일차부터 사진 ${targetDays.length}장을 등록하는 중입니다.`);
+    showToast(`${targetDays[0]}일차부터 사진 ${maxCount}장을 등록하는 중입니다.`);
     for (const day of targetDays) {
-      const image = await preparePhotoEntry(day, imageFiles[completed]);
-      const saved = await persistEntry(day);
-      if (!saved) throw new Error(`${day}일차 저장 실패`);
-      cleanupOldPhotoPath(image.oldPath, image.newPath);
-      completed += 1;
+      if (fileIndex >= imageFiles.length) break;
+
+      let savedForDay = false;
+      while (!savedForDay && fileIndex < imageFiles.length) {
+        const file = imageFiles[fileIndex];
+        fileIndex += 1;
+
+        try {
+          const image = await preparePhotoEntry(day, file);
+          const saved = await persistEntry(day);
+          if (!saved) throw new Error(`${day}일차 저장 실패`);
+          cleanupOldPhotoPath(image.oldPath, image.newPath);
+          completed += 1;
+          savedForDay = true;
+        } catch (error) {
+          console.error(error);
+          failed += 1;
+        }
+      }
     }
 
     await loadBoardList();
     renderAll();
 
-    const overflowCount = imageFiles.length - targetDays.length;
+    const overflowCount = Math.max(0, imageFiles.length - targetDays.length - failed);
     const invalidCount = files.length - imageFiles.length;
     const overflowText = overflowCount > 0 ? ` ${overflowCount}장은 5일차를 넘어 제외했습니다.` : "";
     const invalidText = invalidCount > 0 ? ` 이미지가 아닌 파일 ${invalidCount}개는 제외했습니다.` : "";
-    showToast(`${targetDays[0]}일차부터 ${completed}장 등록했습니다.${overflowText}${invalidText}`);
+    const failedText = failed > 0 ? ` 처리 실패 ${failed}장은 건너뛰었습니다.` : "";
+    showToast(`${targetDays[0]}일차부터 ${completed}장 등록했습니다.${failedText}${overflowText}${invalidText}`);
   } catch (error) {
     console.error(error);
     await loadBoardList();
     renderAll();
     showToast(`${completed}장 등록 후 중단됐습니다. 실패한 사진은 다시 시도해 주세요.`);
+  } finally {
+    await endPhotoMutation();
   }
 }
 
@@ -791,18 +855,38 @@ async function deletePhoto(day) {
   const ok = window.confirm(`${day}일차 사진을 삭제할까요?`);
   if (!ok) return;
 
+  endFilePickNow();
+  beginPhotoMutation();
   const previousPath = entry.photoPath;
+  const previousUrl = entry.photoUrl;
+  const previousUploadedAt = entry.uploadedAt;
+  const previousSizeBytes = entry.sizeBytes || 0;
   entry.photoUrl = "";
   entry.photoPath = "";
   entry.uploadedAt = "";
   entry.sizeBytes = 0;
+  renderAll();
 
-  if (dbClient && previousPath) {
-    dbClient.storage.from(config.bucket).remove([previousPath]).catch(console.error);
+  try {
+    const saved = await saveEntry(day);
+    if (!saved) {
+      entry.photoUrl = previousUrl;
+      entry.photoPath = previousPath;
+      entry.uploadedAt = previousUploadedAt;
+      entry.sizeBytes = previousSizeBytes;
+      renderAll();
+      showToast(`${day}일차 사진 삭제 저장에 실패했습니다.`);
+      return;
+    }
+
+    if (dbClient && previousPath) {
+      dbClient.storage.from(config.bucket).remove([previousPath]).catch(console.error);
+    }
+
+    showToast(`${day}일차 사진을 삭제했습니다.`);
+  } finally {
+    await endPhotoMutation();
   }
-
-  await saveEntry(day);
-  showToast(`${day}일차 사진을 삭제했습니다.`);
 }
 
 function getEntry(day) {
@@ -840,6 +924,7 @@ function beginFilePick() {
   isFilePickerOpen = true;
   filePickerClearTimer = window.setTimeout(() => {
     isFilePickerOpen = false;
+    flushPendingRealtimeRefresh();
   }, 120000);
 }
 
@@ -847,7 +932,47 @@ function endFilePickSoon() {
   window.clearTimeout(filePickerClearTimer);
   filePickerClearTimer = window.setTimeout(() => {
     isFilePickerOpen = false;
+    flushPendingRealtimeRefresh();
   }, 800);
+}
+
+function endFilePickNow() {
+  window.clearTimeout(filePickerClearTimer);
+  isFilePickerOpen = false;
+}
+
+function beginPhotoMutation() {
+  activePhotoMutationCount += 1;
+}
+
+async function endPhotoMutation() {
+  activePhotoMutationCount = Math.max(0, activePhotoMutationCount - 1);
+  await flushPendingRealtimeRefresh();
+}
+
+function shouldDeferRealtimeRefresh() {
+  return isFilePickerOpen || activePhotoMutationCount > 0;
+}
+
+async function flushPendingRealtimeRefresh() {
+  if (!pendingRealtimeRefresh || shouldDeferRealtimeRefresh() || !dbClient) return;
+  pendingRealtimeRefresh = false;
+
+  try {
+    const inputFocused = isMetaInputFocused();
+    await loadCloudBoard({ syncInputs: !inputFocused });
+    await loadCloudEntries();
+    await loadBoardList();
+    if (inputFocused) {
+      renderMetaPreview();
+    } else {
+      renderAll();
+    }
+    renderStorageMeter();
+  } catch (error) {
+    console.error(error);
+    pendingRealtimeRefresh = true;
+  }
 }
 
 function renderBoardList() {
@@ -990,11 +1115,11 @@ function renderDayGrid() {
             <div class="upload-row">
               <div class="file-control">
                 <label class="file-control-title" for="camera-${day}">▣ 촬영</label>
-                <input id="camera-${day}" class="file-input" data-day="${day}" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" capture="environment" aria-label="${day}일차 사진 촬영">
+                <input id="camera-${day}" class="file-input" data-day="${day}" type="file" accept="image/*" capture="environment" aria-label="${day}일차 사진 촬영">
               </div>
               <div class="file-control">
                 <label class="file-control-title" for="gallery-${day}">＋ 첨부</label>
-                <input id="gallery-${day}" class="file-input" data-day="${day}" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple aria-label="${day}일차 사진 첨부">
+                <input id="gallery-${day}" class="file-input" data-day="${day}" type="file" accept="image/*" multiple aria-label="${day}일차 사진 첨부">
               </div>
               ${
                 hasPhoto
@@ -1119,7 +1244,7 @@ async function createNewBoard() {
 }
 
 async function openBoard(shareCode) {
-  if (!shareCode || shareCode === state.shareCode) return;
+  if (!shareCode) return;
   const url = new URL(window.location.href);
   url.searchParams.set("board", shareCode);
   window.history.replaceState({}, "", url.toString());
