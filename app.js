@@ -9,9 +9,12 @@ const IMAGE_MAX_HEIGHT = 1067;
 const IMAGE_QUALITY = 0.78;
 
 const elements = {
-  copyLinkButton: document.getElementById("copyLinkButton"),
+  searchButton: document.getElementById("searchButton"),
   printButton: document.getElementById("printButton"),
   newBoardButton: document.getElementById("newBoardButton"),
+  boardSearchBar: document.getElementById("boardSearchBar"),
+  boardSearchInput: document.getElementById("boardSearchInput"),
+  clearSearchButton: document.getElementById("clearSearchButton"),
   storageMeterText: document.getElementById("storageMeterText"),
   storageMeterBar: document.getElementById("storageMeterBar"),
   boardList: document.getElementById("boardList"),
@@ -32,6 +35,9 @@ let dbClient = null;
 let realtimeChannel = null;
 let metaSaveTimer = null;
 let boardList = [];
+let boardSearchQuery = "";
+let boardListRenderFrame = 0;
+let isBoardSearchComposing = false;
 let touchStartX = 0;
 let touchStartY = 0;
 let swipeDay = null;
@@ -69,11 +75,33 @@ async function init() {
 }
 
 function bindEvents() {
-  elements.copyLinkButton.addEventListener("click", copyShareLink);
+  elements.searchButton.addEventListener("click", toggleBoardSearch);
+  elements.boardSearchInput.addEventListener("compositionstart", () => {
+    isBoardSearchComposing = true;
+  });
+  elements.boardSearchInput.addEventListener("compositionend", () => {
+    isBoardSearchComposing = false;
+    boardSearchQuery = elements.boardSearchInput.value;
+    scheduleBoardListRender();
+  });
+  elements.boardSearchInput.addEventListener("input", () => {
+    if (isBoardSearchComposing) return;
+    boardSearchQuery = elements.boardSearchInput.value;
+    scheduleBoardListRender();
+  });
+  elements.boardSearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      clearBoardSearch();
+    }
+  });
+  elements.clearSearchButton.addEventListener("click", clearBoardSearch);
   elements.printButton.addEventListener("click", handlePrint);
   elements.newBoardButton.addEventListener("click", createNewBoard);
   elements.prevPourDateButton.addEventListener("click", () => shiftPourDate(-1));
   elements.nextPourDateButton.addEventListener("click", () => shiftPourDate(1));
+  window.addEventListener("popstate", () => {
+    syncUrlToCurrentBoard();
+  });
   elements.summaryList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-summary-day]");
     if (!button) return;
@@ -127,6 +155,16 @@ function bindEvents() {
   });
 
   elements.dayGrid.addEventListener("click", async (event) => {
+    const pickButton = event.target.closest("[data-pick-input]");
+    if (pickButton) {
+      event.preventDefault();
+      const input = document.getElementById(pickButton.dataset.pickInput);
+      if (input) {
+        input.click();
+      }
+      return;
+    }
+
     const deleteButton = event.target.closest("[data-delete-day]");
     if (!deleteButton) return;
 
@@ -214,6 +252,16 @@ async function setupCloudMode() {
 function ensureShareCode() {
   const url = new URL(window.location.href);
   return url.searchParams.get("board") || "";
+}
+
+function syncUrlToCurrentBoard() {
+  const url = new URL(window.location.href);
+  if (state.shareCode) {
+    url.searchParams.set("board", state.shareCode);
+  } else {
+    url.searchParams.delete("board");
+  }
+  window.history.replaceState({}, "", url.toString());
 }
 
 function createShareCode() {
@@ -357,15 +405,19 @@ async function loadCloudBoardList() {
   const { data, error } = await query;
   if (error) throw error;
 
-  boardList = (data || []).map((board) => ({
-    shareCode: board.share_code,
-    projectName: normalizeProjectName(board.project_name || DEFAULT_PROJECT_NAME),
-    pourPart: board.pour_part || "미입력",
-    pourDate: board.pour_date || "",
-    createdAt: board.created_at || "",
-    updatedAt: board.updated_at || "",
-    completedCount: (board.photo_entries || []).filter((entry) => entry.photo_url).length,
-  }));
+  boardList = (data || []).map((board) => {
+    const pourPart = board.pour_part || "미입력";
+    return {
+      shareCode: board.share_code,
+      projectName: normalizeProjectName(board.project_name || DEFAULT_PROJECT_NAME),
+      pourPart,
+      searchText: normalizeSearchText(pourPart),
+      pourDate: board.pour_date || "",
+      createdAt: board.created_at || "",
+      updatedAt: board.updated_at || "",
+      completedCount: (board.photo_entries || []).filter((entry) => entry.photo_url).length,
+    };
+  });
 }
 
 function loadLocalBoardList() {
@@ -376,10 +428,12 @@ function loadLocalBoardList() {
       try {
         const parsed = JSON.parse(localStorage.getItem(key) || "{}");
         const entries = parsed.entries || {};
+        const pourPart = parsed.pourPart || "미입력";
         return {
           shareCode: key.slice(LOCAL_PREFIX.length),
           projectName: normalizeProjectName(parsed.projectName || DEFAULT_PROJECT_NAME),
-          pourPart: parsed.pourPart || "미입력",
+          pourPart,
+          searchText: normalizeSearchText(pourPart),
           pourDate: parsed.pourDate || "",
           createdAt: parsed.createdAt || parsed.updatedAt || "",
           updatedAt: parsed.updatedAt || "",
@@ -648,7 +702,7 @@ async function handlePhotoUpload(day, file) {
     return;
   }
 
-  if (!file.type.startsWith("image/")) {
+  if (!isImageFile(file)) {
     showToast("이미지 파일만 등록할 수 있습니다.");
     return;
   }
@@ -738,16 +792,20 @@ function renderMetaPreview() {
 }
 
 function renderBoardList() {
-  if (!boardList.length) {
+  cancelScheduledBoardListRender();
+
+  const visibleBoards = getVisibleBoardList();
+  if (!visibleBoards.length) {
+    const isSearching = Boolean(normalizeSearchText(boardSearchQuery));
     elements.boardList.innerHTML = `
       <div class="empty-list">
-        등록된 사진대지가 없습니다.
+        ${isSearching ? "검색 결과가 없습니다." : "등록된 사진대지가 없습니다."}
       </div>
     `;
     return;
   }
 
-  elements.boardList.innerHTML = boardList
+  elements.boardList.innerHTML = visibleBoards
     .map((board) => {
       const active = board.shareCode === state.shareCode;
       return `
@@ -762,6 +820,66 @@ function renderBoardList() {
       `;
     })
     .join("");
+}
+
+function getVisibleBoardList() {
+  const query = normalizeSearchText(boardSearchQuery);
+  if (!query) return boardList;
+
+  return boardList.filter((board) => (board.searchText || normalizeSearchText(board.pourPart)).includes(query));
+}
+
+function scheduleBoardListRender() {
+  cancelScheduledBoardListRender();
+  const schedule = window.requestAnimationFrame
+    ? window.requestAnimationFrame.bind(window)
+    : (callback) => window.setTimeout(callback, 16);
+  boardListRenderFrame = schedule(() => {
+    boardListRenderFrame = 0;
+    renderBoardList();
+  });
+}
+
+function cancelScheduledBoardListRender() {
+  if (!boardListRenderFrame) return;
+  if (window.cancelAnimationFrame) {
+    window.cancelAnimationFrame(boardListRenderFrame);
+  } else {
+    window.clearTimeout(boardListRenderFrame);
+  }
+  boardListRenderFrame = 0;
+}
+
+function toggleBoardSearch() {
+  const willOpen = elements.boardSearchBar.hidden;
+  elements.boardSearchBar.hidden = !willOpen;
+  elements.searchButton.setAttribute("aria-expanded", String(willOpen));
+
+  if (willOpen) {
+    elements.boardSearchInput.focus();
+    elements.boardSearchInput.select();
+    return;
+  }
+
+  if (boardSearchQuery) {
+    boardSearchQuery = "";
+    elements.boardSearchInput.value = "";
+    renderBoardList();
+  }
+  elements.boardSearchInput.blur();
+}
+
+function clearBoardSearch() {
+  boardSearchQuery = "";
+  elements.boardSearchInput.value = "";
+  renderBoardList();
+  elements.boardSearchInput.focus();
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLocaleLowerCase("ko-KR")
+    .replace(/\s+/g, "");
 }
 
 function renderSummary() {
@@ -811,16 +929,16 @@ function renderDayGrid() {
           </div>
           <div class="day-card-body">
             <div class="upload-row">
-              <label class="small-button file-picker">
+              <button class="small-button" type="button" data-pick-input="camera-${day}">
                 <span class="button-icon" aria-hidden="true">▣</span>
                 <span>촬영</span>
-                <input class="file-input" data-day="${day}" type="file" accept="image/*" capture="environment">
-              </label>
-              <label class="small-button file-picker">
+              </button>
+              <input id="camera-${day}" class="file-input" data-day="${day}" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" capture="environment">
+              <button class="small-button" type="button" data-pick-input="gallery-${day}">
                 <span class="button-icon" aria-hidden="true">＋</span>
                 <span>첨부</span>
-                <input class="file-input" data-day="${day}" type="file" accept="image/*">
-              </label>
+              </button>
+              <input id="gallery-${day}" class="file-input" data-day="${day}" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif">
               ${
                 hasPhoto
                   ? `<button class="small-button danger-button" type="button" data-delete-day="${day}">
@@ -913,23 +1031,13 @@ function handlePrint() {
   window.print();
 }
 
-async function copyShareLink() {
-  const link = window.location.href;
-  try {
-    await navigator.clipboard.writeText(link);
-    showToast("공유 링크를 복사했습니다.");
-  } catch {
-    window.prompt("공유 링크를 복사하세요.", link);
-  }
-}
-
 async function createNewBoard() {
   window.clearTimeout(metaSaveTimer);
 
   const url = new URL(window.location.href);
   const shareCode = createShareCode();
   url.searchParams.set("board", shareCode);
-  window.history.pushState({}, "", url.toString());
+  window.history.replaceState({}, "", url.toString());
 
   state = {
     shareCode,
@@ -953,11 +1061,22 @@ async function createNewBoard() {
   showToast("새 사진대지를 만들었습니다.");
 }
 
-function openBoard(shareCode) {
+async function openBoard(shareCode) {
   if (!shareCode || shareCode === state.shareCode) return;
   const url = new URL(window.location.href);
   url.searchParams.set("board", shareCode);
-  window.location.href = url.toString();
+  window.history.replaceState({}, "", url.toString());
+  state.shareCode = shareCode;
+
+  if (dbClient) {
+    await loadCloudBoard();
+    await subscribeToChanges();
+  } else {
+    loadLocalBoard();
+  }
+
+  await loadBoardList();
+  renderAll();
 }
 
 async function deleteBoard(shareCode) {
@@ -979,6 +1098,8 @@ async function deleteBoard(shareCode) {
     if (error) {
       console.error(error);
       showToast("사진대지 삭제에 실패했습니다.");
+      await loadBoardList();
+      renderBoardList();
       return;
     }
 
@@ -1036,7 +1157,7 @@ async function deleteBoard(shareCode) {
   await loadBoardList();
 
   if (shareCode === state.shareCode) {
-    openNextBoardAfterDelete();
+    await openNextBoardAfterDelete();
     return;
   }
 
@@ -1044,10 +1165,10 @@ async function deleteBoard(shareCode) {
   renderStorageMeter();
 }
 
-function openNextBoardAfterDelete() {
+async function openNextBoardAfterDelete() {
   const nextBoard = boardList.find((board) => board.shareCode !== state.shareCode);
   if (nextBoard) {
-    openBoard(nextBoard.shareCode);
+    await openBoard(nextBoard.shareCode);
     return;
   }
 
@@ -1142,6 +1263,11 @@ function resizeImage(file, maxWidth = IMAGE_MAX_WIDTH, maxHeight = IMAGE_MAX_HEI
 
     img.src = url;
   });
+}
+
+function isImageFile(file) {
+  if (file.type && file.type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name || "");
 }
 
 function days() {

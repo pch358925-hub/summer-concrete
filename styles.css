@@ -322,6 +322,53 @@ input:focus {
   line-height: 1;
 }
 
+.board-search-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.board-search-bar[hidden] {
+  display: none;
+}
+
+.board-search-label {
+  min-width: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 10px;
+}
+
+.board-search-label:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(31, 122, 90, 0.14);
+}
+
+.board-search-label .button-icon {
+  display: inline-grid;
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.board-search-label input {
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.board-search-label input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .board-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
@@ -611,22 +658,17 @@ input:focus {
   padding: 0 6px;
 }
 
-.file-picker {
-  position: relative;
-  overflow: hidden;
-}
-
 .upload-row .danger-button {
   grid-column: 1 / -1;
 }
 
 .file-input {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0.01;
+  pointer-events: none;
 }
 
 .uploaded-meta {

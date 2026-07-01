@@ -15,9 +15,9 @@
           <h1>서중 콘크리트 습윤양생</h1>
         </div>
         <div class="topbar-actions">
-          <button id="copyLinkButton" class="icon-button" type="button" title="공유 링크 복사">
-            <span class="button-icon" aria-hidden="true">↗</span>
-            <span>링크</span>
+          <button id="searchButton" class="icon-button" type="button" title="사진대지 검색" aria-controls="boardSearchBar" aria-expanded="false">
+            <span class="button-icon" aria-hidden="true">⌕</span>
+            <span>검색</span>
           </button>
           <button id="printButton" class="primary-button" type="button">
             <span class="button-icon" aria-hidden="true">⎙</span>
@@ -43,6 +43,13 @@
                 </div>
               </div>
             </div>
+          </div>
+          <div id="boardSearchBar" class="board-search-bar" hidden>
+            <label class="board-search-label" aria-label="타설부위 검색">
+              <span class="button-icon" aria-hidden="true">⌕</span>
+              <input id="boardSearchInput" type="search" placeholder="타설부위 검색" autocomplete="off">
+            </label>
+            <button id="clearSearchButton" class="small-button" type="button">지움</button>
           </div>
           <div id="boardList" class="board-list"></div>
         </section>
