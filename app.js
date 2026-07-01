@@ -42,6 +42,7 @@ let state = {
   projectName: DEFAULT_PROJECT_NAME,
   pourPart: "",
   pourDate: "",
+  createdAt: "",
   entries: {},
 };
 
@@ -227,6 +228,7 @@ function resetCurrentBoard(options = {}) {
     projectName: DEFAULT_PROJECT_NAME,
     pourPart: "",
     pourDate: toDateInputValue(new Date()),
+    createdAt: "",
     entries: {},
   };
   syncInputsFromState();
@@ -274,6 +276,7 @@ async function loadCloudBoard(options = {}) {
     state.projectName = normalizeProjectName(board.project_name || DEFAULT_PROJECT_NAME);
     state.pourPart = board.pour_part || "";
     state.pourDate = board.pour_date || toDateInputValue(new Date());
+    state.createdAt = board.created_at || "";
   } else if (createIfMissing) {
     const { data: created, error: insertError } = await dbClient
       .from("photo_boards")
@@ -292,6 +295,7 @@ async function loadCloudBoard(options = {}) {
     state.projectName = normalizeProjectName(created.project_name || DEFAULT_PROJECT_NAME);
     state.pourPart = created.pour_part || "";
     state.pourDate = created.pour_date || toDateInputValue(new Date());
+    state.createdAt = created.created_at || "";
   } else {
     resetCurrentBoard({ keepShareCode: true });
   }
@@ -342,10 +346,10 @@ async function loadCloudBoardList() {
   const range = getListRange();
   let query = dbClient
     .from("photo_boards")
-    .select("id, share_code, project_name, pour_part, pour_date, updated_at, photo_entries(day_no, photo_url)")
+    .select("id, share_code, project_name, pour_part, pour_date, created_at, updated_at, photo_entries(day_no, photo_url)")
     .not("pour_date", "is", null)
     .order("pour_date", { ascending: false })
-    .order("updated_at", { ascending: false });
+    .order("created_at", { ascending: false });
 
   if (range.start) query = query.gte("pour_date", range.start);
   if (range.end) query = query.lte("pour_date", range.end);
@@ -358,6 +362,7 @@ async function loadCloudBoardList() {
     projectName: normalizeProjectName(board.project_name || DEFAULT_PROJECT_NAME),
     pourPart: board.pour_part || "미입력",
     pourDate: board.pour_date || "",
+    createdAt: board.created_at || "",
     updatedAt: board.updated_at || "",
     completedCount: (board.photo_entries || []).filter((entry) => entry.photo_url).length,
   }));
@@ -376,6 +381,7 @@ function loadLocalBoardList() {
           projectName: normalizeProjectName(parsed.projectName || DEFAULT_PROJECT_NAME),
           pourPart: parsed.pourPart || "미입력",
           pourDate: parsed.pourDate || "",
+          createdAt: parsed.createdAt || parsed.updatedAt || "",
           updatedAt: parsed.updatedAt || "",
           completedCount: Object.values(entries).filter((entry) => entry && entry.photoUrl).length,
         };
@@ -393,7 +399,7 @@ function loadLocalBoardList() {
     .sort((a, b) => {
       const dateCompare = (b.pourDate || "").localeCompare(a.pourDate || "");
       if (dateCompare) return dateCompare;
-      return (b.updatedAt || "").localeCompare(a.updatedAt || "");
+      return (b.createdAt || "").localeCompare(a.createdAt || "");
     });
 }
 
@@ -624,6 +630,7 @@ function saveLocalBoard() {
         projectName: state.projectName,
         pourPart: state.pourPart,
         pourDate: state.pourDate,
+        createdAt: state.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         entries: state.entries,
       })
@@ -804,15 +811,15 @@ function renderDayGrid() {
           </div>
           <div class="day-card-body">
             <div class="upload-row">
-              <input id="camera-${day}" class="file-input" data-day="${day}" type="file" accept="image/*" capture="environment">
-              <label class="small-button" for="camera-${day}">
+              <label class="small-button file-picker">
                 <span class="button-icon" aria-hidden="true">▣</span>
                 <span>촬영</span>
+                <input class="file-input" data-day="${day}" type="file" accept="image/*" capture="environment">
               </label>
-              <input id="gallery-${day}" class="file-input" data-day="${day}" type="file" accept="image/*">
-              <label class="small-button" for="gallery-${day}">
+              <label class="small-button file-picker">
                 <span class="button-icon" aria-hidden="true">＋</span>
                 <span>첨부</span>
+                <input class="file-input" data-day="${day}" type="file" accept="image/*">
               </label>
               ${
                 hasPhoto

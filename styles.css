@@ -443,13 +443,13 @@ input:focus {
 
 .summary-row {
   display: flex;
-  justify-content: flex-end;
+  justify-content: stretch;
   margin-top: 3px;
 }
 
 .summary-list {
   display: inline-grid;
-  width: min(100%, 430px);
+  width: 100%;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 3px;
 }
@@ -611,16 +611,22 @@ input:focus {
   padding: 0 6px;
 }
 
+.file-picker {
+  position: relative;
+  overflow: hidden;
+}
+
 .upload-row .danger-button {
   grid-column: 1 / -1;
 }
 
 .file-input {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .uploaded-meta {
@@ -906,6 +912,9 @@ input:focus {
     border: 0;
     box-shadow: none;
     page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .print-page:last-child {
@@ -914,5 +923,10 @@ input:focus {
 
   .print-title {
     margin-top: 0;
+    flex: 0 0 auto;
+  }
+
+  .print-sheet-table {
+    flex: 0 0 auto;
   }
 }
