@@ -38,6 +38,8 @@ let boardList = [];
 let boardSearchQuery = "";
 let boardListRenderFrame = 0;
 let isBoardSearchComposing = false;
+let isFilePickerOpen = false;
+let filePickerClearTimer = null;
 
 let state = {
   shareCode: "",
@@ -132,10 +134,27 @@ function bindEvents() {
     input.addEventListener("blur", flushMetaSave);
   });
 
-  window.addEventListener("pagehide", flushMetaSave);
+  window.addEventListener("pagehide", () => {
+    if (isFilePickerOpen) return;
+    flushMetaSave();
+  });
   document.addEventListener("visibilitychange", () => {
+    if (isFilePickerOpen) return;
     if (document.visibilityState === "hidden") {
       flushMetaSave();
+    }
+  });
+  window.addEventListener("focus", endFilePickSoon);
+
+  elements.dayGrid.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".file-control")) {
+      beginFilePick();
+    }
+  });
+
+  elements.dayGrid.addEventListener("click", (event) => {
+    if (event.target.closest(".file-control")) {
+      beginFilePick();
     }
   });
 
@@ -146,6 +165,8 @@ function bindEvents() {
     const day = Number(target.dataset.day);
     const files = Array.from(target.files || []);
     target.value = "";
+    window.clearTimeout(filePickerClearTimer);
+    isFilePickerOpen = false;
     if (!day || !files.length) return;
 
     await handlePhotoSelection(day, files);
@@ -799,15 +820,34 @@ function getEntry(day) {
 function renderAll() {
   renderBoardList();
   renderSummary();
-  renderDayGrid();
+  if (!isFilePickerOpen) {
+    renderDayGrid();
+  }
   renderPrintArea();
   renderStorageMeter();
 }
 
 function renderMetaPreview() {
   renderSummary();
-  renderDayGrid();
+  if (!isFilePickerOpen) {
+    renderDayGrid();
+  }
   renderPrintArea();
+}
+
+function beginFilePick() {
+  window.clearTimeout(filePickerClearTimer);
+  isFilePickerOpen = true;
+  filePickerClearTimer = window.setTimeout(() => {
+    isFilePickerOpen = false;
+  }, 120000);
+}
+
+function endFilePickSoon() {
+  window.clearTimeout(filePickerClearTimer);
+  filePickerClearTimer = window.setTimeout(() => {
+    isFilePickerOpen = false;
+  }, 800);
 }
 
 function renderBoardList() {
