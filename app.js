@@ -2,6 +2,8 @@ const DEFAULT_PROJECT_NAME = "세종천안 2공구 (주)한화";
 const DAY_COUNT = 5;
 const LOCAL_PREFIX = "curing-photo-board:";
 const META_DRAFT_PREFIX = `${LOCAL_PREFIX}meta-draft:`;
+const STORAGE_DISPLAY_LIMIT_BYTES = 1024 * 1024 * 1024;
+const ESTIMATED_PHOTO_BYTES = 600 * 1024;
 const IMAGE_MAX_WIDTH = 1600;
 const IMAGE_MAX_HEIGHT = 1067;
 const IMAGE_QUALITY = 0.78;
@@ -67,7 +69,7 @@ async function init() {
 
 function bindEvents() {
   elements.copyLinkButton.addEventListener("click", copyShareLink);
-  elements.printButton.addEventListener("click", () => window.print());
+  elements.printButton.addEventListener("click", handlePrint);
   elements.newBoardButton.addEventListener("click", createNewBoard);
   elements.prevPourDateButton.addEventListener("click", () => shiftPourDate(-1));
   elements.nextPourDateButton.addEventListener("click", () => shiftPourDate(1));
@@ -774,20 +776,8 @@ function renderSummary() {
 async function renderStorageMeter() {
   if (!elements.storageMeterText || !elements.storageMeterBar) return;
 
-  const knownPhotoBytes = getKnownPhotoBytes();
-  let usage = knownPhotoBytes;
-  let quota = 50 * 1024 * 1024;
-
-  if (navigator.storage?.estimate) {
-    try {
-      const estimate = await navigator.storage.estimate();
-      usage = Math.max(usage, estimate.usage || 0);
-      quota = estimate.quota || quota;
-    } catch {
-      // Use the app-specific fallback when the browser estimate is unavailable.
-    }
-  }
-
+  const usage = getKnownPhotoBytes();
+  const quota = getStorageDisplayLimitBytes();
   const percent = quota ? Math.min(100, Math.round((usage / quota) * 100)) : 0;
   elements.storageMeterText.textContent = `${formatBytes(usage)} / ${formatBytes(quota)}`;
   elements.storageMeterBar.style.width = `${percent}%`;
@@ -905,6 +895,15 @@ function renderUploadedMeta(entry) {
   if (!entry.photoUrl) return "";
   const time = entry.uploadedAt ? formatDateTime(entry.uploadedAt) : "";
   return time ? `등록 ${escapeHtml(time)} · 자동 압축` : "자동 압축";
+}
+
+function handlePrint() {
+  if (isKakaoInAppBrowser()) {
+    showToast("카톡 안에서는 인쇄가 막힐 수 있습니다. 브라우저로 열어서 인쇄해 주세요.");
+    return;
+  }
+
+  window.print();
 }
 
 async function copyShareLink() {
@@ -1091,30 +1090,9 @@ function isMetaInputFocused() {
 }
 
 function getKnownPhotoBytes() {
-  const entryBytes = Object.values(state.entries || {}).reduce((sum, entry) => {
-    if (!entry) return sum;
-    if (entry.sizeBytes) return sum + Number(entry.sizeBytes);
-    if (entry.photoUrl && entry.photoUrl.startsWith("data:")) return sum + estimateDataUrlBytes(entry.photoUrl);
-    return sum;
-  }, 0);
-
-  let localBytes = 0;
-  try {
-    Object.keys(localStorage)
-      .filter((key) => key.startsWith(LOCAL_PREFIX))
-      .forEach((key) => {
-        localBytes += key.length + (localStorage.getItem(key) || "").length;
-      });
-  } catch {
-    localBytes = 0;
-  }
-
-  return Math.max(entryBytes, localBytes * 2);
-}
-
-function estimateDataUrlBytes(value) {
-  const base64 = String(value).split(",")[1] || "";
-  return Math.round((base64.length * 3) / 4);
+  const listPhotoCount = boardList.reduce((sum, board) => sum + Number(board.completedCount || 0), 0);
+  const currentPhotoCount = Object.values(state.entries || {}).filter((entry) => entry?.photoUrl).length;
+  return Math.max(listPhotoCount, currentPhotoCount) * ESTIMATED_PHOTO_BYTES;
 }
 
 function resizeImage(file, maxWidth = IMAGE_MAX_WIDTH, maxHeight = IMAGE_MAX_HEIGHT) {
@@ -1190,11 +1168,11 @@ function formatMonthDay(date) {
 
 function formatListDate(value) {
   if (!value) return "날짜 없음";
-  return new Date(`${value}T00:00:00`).toLocaleDateString("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-  });
+  const date = new Date(`${value}T00:00:00`);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const weekday = date.toLocaleDateString("ko-KR", { weekday: "short" });
+  return `${month}.${day}.(${weekday})`;
 }
 
 function formatDateTime(value) {
@@ -1215,13 +1193,27 @@ function toDateInputValue(date) {
 
 function formatBytes(bytes) {
   if (!bytes) return "0KB";
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${Math.round(bytes / 1024 / 1024)}MB`;
+  return `${Math.round(bytes / 1024 / 1024 / 1024)}GB`;
+}
+
+function getStorageDisplayLimitBytes() {
+  const configuredMb = Number(config.storageLimitMb);
+  if (configuredMb > 0) {
+    return configuredMb * 1024 * 1024;
+  }
+
+  return STORAGE_DISPLAY_LIMIT_BYTES;
 }
 
 function ensureSupabaseClient() {
   if (window.supabase) return Promise.resolve();
   return loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2");
+}
+
+function isKakaoInAppBrowser() {
+  return /KAKAOTALK/i.test(navigator.userAgent);
 }
 
 function loadScript(src) {

@@ -176,6 +176,7 @@ p {
   background: var(--surface);
   box-shadow: var(--shadow);
   padding: 10px;
+  overflow-x: auto;
 }
 
 .panel-heading,
@@ -332,15 +333,19 @@ input:focus {
 
 .board-list-item {
   min-width: 0;
-  min-height: 40px;
+  min-height: 50px;
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 44px 28px;
-  align-items: center;
-  gap: 5px;
+  grid-template-columns: minmax(0, 1fr) auto 24px;
+  grid-template-areas:
+    "date count delete"
+    "part part part";
+  align-items: start;
+  column-gap: 5px;
+  row-gap: 1px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  padding: 5px 6px;
+  padding: 5px 6px 6px;
   color: var(--ink);
   text-align: left;
   cursor: pointer;
@@ -362,8 +367,9 @@ input:focus {
 }
 
 .board-delete-button {
-  width: 30px;
-  height: 30px;
+  grid-area: delete;
+  width: 24px;
+  height: 24px;
   display: inline-grid;
   place-items: center;
   border: 0;
@@ -385,28 +391,39 @@ input:focus {
 }
 
 .board-date {
+  grid-area: date;
   min-width: 0;
   color: var(--accent-dark);
+  font-size: 13px;
   font-weight: 900;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .board-part {
+  grid-area: part;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 13px;
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .board-count {
-  min-height: 26px;
+  grid-area: count;
+  min-height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   background: #fff2e8;
   color: var(--warn);
+  padding: 0 8px;
+  font-size: 12px;
   font-weight: 900;
+  line-height: 1;
 }
 
 .board-count.complete {
@@ -432,7 +449,8 @@ input:focus {
 
 .summary-list {
   display: inline-grid;
-  grid-template-columns: repeat(5, 50px);
+  width: min(100%, 430px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 3px;
 }
 
@@ -618,10 +636,12 @@ input:focus {
 .print-area {
   display: grid;
   gap: 18px;
+  justify-items: center;
 }
 
 .print-page {
-  width: min(100%, 210mm);
+  width: 190mm;
+  max-width: none;
   margin: 0 auto;
   padding: 12mm 10mm;
   background: #fff;
@@ -630,7 +650,7 @@ input:focus {
 }
 
 .print-title {
-  width: 100%;
+  width: 152mm;
   max-width: 100%;
   margin: 0 auto 11mm;
   text-align: center;
@@ -783,7 +803,8 @@ input:focus {
   }
 
   .summary-list {
-    grid-template-columns: repeat(5, 46px);
+    width: 100%;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
@@ -829,10 +850,6 @@ input:focus {
     width: auto;
   }
 
-  .board-list-item {
-    grid-template-columns: 68px minmax(0, 1fr) 44px 34px;
-  }
-
   .day-card-body {
     padding: 4px;
   }
@@ -850,7 +867,8 @@ input:focus {
   }
 
   .print-page {
-    overflow-x: auto;
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 
