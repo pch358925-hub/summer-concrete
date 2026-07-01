@@ -26,6 +26,9 @@ const elements = {
   summaryList: document.getElementById("summaryList"),
   dayGrid: document.getElementById("dayGrid"),
   printArea: document.getElementById("printArea"),
+  photoViewer: document.getElementById("photoViewer"),
+  photoViewerImage: document.getElementById("photoViewerImage"),
+  photoViewerClose: document.getElementById("photoViewerClose"),
   syncStatus: document.getElementById("syncStatus"),
   toast: document.getElementById("toast"),
 };
@@ -176,11 +179,26 @@ function bindEvents() {
   });
 
   elements.dayGrid.addEventListener("click", async (event) => {
+    const previewButton = event.target.closest("[data-preview-day]");
+    if (previewButton) {
+      openPhotoViewer(Number(previewButton.dataset.previewDay));
+      return;
+    }
+
     const deleteButton = event.target.closest("[data-delete-day]");
     if (!deleteButton) return;
 
     const day = Number(deleteButton.dataset.deleteDay);
     await deletePhoto(day);
+  });
+
+  elements.photoViewerClose.addEventListener("click", closePhotoViewer);
+  elements.photoViewer.addEventListener("pointerdown", closePhotoViewerOnBackdrop);
+  elements.photoViewer.addEventListener("click", closePhotoViewerOnBackdrop);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.photoViewer.hidden) {
+      closePhotoViewer();
+    }
   });
 }
 
@@ -1107,7 +1125,9 @@ function renderDayGrid() {
           <div class="photo-preview">
             ${
               hasPhoto
-                ? `<img src="${escapeAttribute(entry.photoUrl)}" alt="${day}일차 습윤양생 사진">`
+                ? `<button class="photo-preview-button" type="button" data-preview-day="${day}" title="${day}일차 사진 크게 보기">
+                    <img src="${escapeAttribute(entry.photoUrl)}" alt="${day}일차 습윤양생 사진">
+                  </button>`
                 : `<div class="empty-photo"><span>사진 미등록</span></div>`
             }
           </div>
@@ -1202,6 +1222,29 @@ function renderUploadedMeta(entry) {
   if (!entry.photoUrl) return "";
   const time = entry.uploadedAt ? formatDateTime(entry.uploadedAt) : "";
   return time ? `등록 ${escapeHtml(time)} · 자동 압축` : "자동 압축";
+}
+
+function openPhotoViewer(day) {
+  const entry = getEntry(day);
+  if (!entry.photoUrl) return;
+
+  elements.photoViewerImage.src = entry.photoUrl;
+  elements.photoViewerImage.alt = `${day}일차 습윤양생 사진`;
+  elements.photoViewer.hidden = false;
+  document.body.classList.add("viewer-open");
+}
+
+function closePhotoViewerOnBackdrop(event) {
+  if (event.target === elements.photoViewer) {
+    closePhotoViewer();
+  }
+}
+
+function closePhotoViewer() {
+  elements.photoViewer.hidden = true;
+  elements.photoViewerImage.removeAttribute("src");
+  elements.photoViewerImage.alt = "";
+  document.body.classList.remove("viewer-open");
 }
 
 function handlePrint() {
