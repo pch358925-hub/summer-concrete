@@ -33,6 +33,18 @@
               <h2>사진대지 목록</h2>
             </div>
             <div class="list-tools">
+              <div class="month-filter" aria-label="사진대지 작업월">
+                <button id="prevListMonthButton" class="month-step-button" type="button" title="이전 달">
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <label class="month-filter-label">
+                  <span>작업월</span>
+                  <input id="listMonthInput" type="month" aria-label="사진대지 작업월">
+                </label>
+                <button id="nextListMonthButton" class="month-step-button" type="button" title="다음 달">
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
               <div id="storageMeter" class="storage-meter" aria-label="저장 용량">
                 <div class="storage-meter-row">
                   <span>용량</span>

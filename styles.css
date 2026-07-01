@@ -40,6 +40,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.64;
+}
+
 .app {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
@@ -115,6 +120,54 @@ p {
   min-width: 0;
   gap: 5px;
   flex-wrap: nowrap;
+}
+
+.month-filter {
+  width: 218px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 30px;
+  align-items: end;
+  gap: 4px;
+}
+
+.month-filter-label {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.month-filter-label span {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.month-filter-label input {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.month-step-button {
+  width: 30px;
+  min-height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.month-step-button:hover {
+  border-color: rgba(31, 122, 90, 0.38);
+  background: var(--surface-soft);
 }
 
 .storage-meter {
@@ -738,7 +791,7 @@ input:focus {
 .print-title {
   width: 152mm;
   max-width: 100%;
-  margin: 0 auto 11mm;
+  margin: 0 auto 5mm;
   text-align: center;
   font-family: "HYHeadLine-M", "HY헤드라인M", "Malgun Gothic", sans-serif;
   font-size: 22pt;
@@ -748,6 +801,35 @@ input:focus {
   text-decoration: underline;
   text-decoration-thickness: 1.2pt;
   text-underline-offset: 3pt;
+}
+
+.print-project-name {
+  width: 152mm;
+  max-width: 100%;
+  margin: 0 auto 6mm;
+  display: grid;
+  grid-template-columns: 22.03mm 1fr;
+  min-height: 8mm;
+  align-items: center;
+  border: 0.35mm solid #000;
+  font-family: "HCR Batang", "HYMyeongJo-Extra", "함초롬바탕", "Batang", serif;
+  font-size: 12pt;
+  color: #000;
+}
+
+.print-project-name span {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-right: 0.35mm solid #000;
+  white-space: nowrap;
+}
+
+.print-project-name strong {
+  padding: 0 4mm;
+  font: inherit;
+  font-weight: 400;
+  overflow-wrap: anywhere;
 }
 
 .print-sheet-table {
@@ -960,7 +1042,23 @@ body.viewer-open {
   }
 
   .list-tools {
+    width: 100%;
+    justify-content: stretch;
     flex-wrap: wrap;
+  }
+
+  .board-list-section .panel-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .month-filter {
+    width: 100%;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+  }
+
+  .month-step-button {
+    width: 34px;
   }
 
   .storage-meter {
