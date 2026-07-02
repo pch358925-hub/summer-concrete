@@ -846,6 +846,16 @@ input:focus {
   color: transparent;
 }
 
+@media screen {
+  .preview-section {
+    overflow-x: auto;
+  }
+
+  .preview-section .print-area {
+    zoom: 0.5;
+  }
+}
+
 .toast {
   position: fixed;
   right: 18px;
