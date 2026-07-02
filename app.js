@@ -115,99 +115,67 @@ function applyRuntimeLayoutFixes() {
     }
 
     .print-project-name {
-      width: 152mm !important;
-      max-width: 100% !important;
-      display: block !important;
-      grid-template-columns: none !important;
-      min-height: 6mm !important;
-      margin: 0 auto 6mm !important;
-      border: 0 !important;
-      text-align: right !important;
-      font-family: "HCR Batang", "HYMyeongJo-Extra", "함초롬바탕", "Batang", serif !important;
-      font-size: 12pt !important;
-      color: #000 !important;
-    }
-
-    .print-project-name span {
       display: none !important;
     }
 
-    .print-project-name strong {
-      padding: 0 !important;
-      font: inherit !important;
-      font-weight: 900 !important;
-      white-space: nowrap !important;
-      overflow-wrap: normal !important;
+    .print-page {
+      width: 210mm !important;
+      min-height: 297mm !important;
+      padding: 15mm 0 0 !important;
     }
 
-    @media screen {
-      .print-area {
-        gap: 10px !important;
-      }
+    .print-title {
+      width: 152.02mm !important;
+      margin: 0 auto 16.9mm !important;
+      font-family: "HYHeadLine-M", "HY헤드라인M", "Malgun Gothic", sans-serif !important;
+      font-size: 22pt !important;
+      font-weight: 900 !important;
+      line-height: 1 !important;
+      text-align: center !important;
+      text-decoration: underline !important;
+      text-decoration-thickness: 1.2pt !important;
+      text-underline-offset: 3pt !important;
+    }
 
-      .print-page {
-        width: min(360px, calc(100vw - 44px)) !important;
-        max-width: 100% !important;
-        padding: 14px 12px !important;
-      }
+    .print-sheet-table {
+      width: 152.02mm !important;
+      height: 210.10mm !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      font-family: "휴먼명조", "HCR Batang", "HYMyeongJo-Extra", "Batang", serif !important;
+      font-size: 13pt !important;
+      color: #000 !important;
+    }
 
-      .print-title,
-      .print-project-name,
-      .print-sheet-table {
-        width: 100% !important;
-      }
+    .print-col-label {
+      width: 22.03mm !important;
+    }
 
-      .print-title {
-        margin-bottom: 10px !important;
-        font-size: 18px !important;
-        text-decoration-thickness: 1px !important;
-        text-underline-offset: 3px !important;
-      }
+    .print-col-main {
+      width: 113.91mm !important;
+    }
 
-      .print-project-name {
-        min-height: auto !important;
-        margin-bottom: 10px !important;
-        font-size: 13px !important;
-      }
+    .print-col-day {
+      width: 16.08mm !important;
+    }
 
-      .print-sheet-table {
-        height: auto !important;
-        font-size: 12px !important;
-      }
+    .print-photo-row {
+      height: 84mm !important;
+    }
 
-      .print-col-label {
-        width: 52px !important;
-      }
+    .print-info-row,
+    .print-content-row {
+      height: 10.525mm !important;
+    }
 
-      .print-col-main {
-        width: auto !important;
-      }
+    .print-photo-frame {
+      width: 120mm !important;
+      height: 80mm !important;
+    }
 
-      .print-col-day {
-        width: 48px !important;
-      }
-
-      .print-photo-row {
-        height: 126px !important;
-      }
-
-      .print-info-row,
-      .print-content-row {
-        height: 24px !important;
-      }
-
-      .print-photo-frame {
-        width: min(100%, 180px) !important;
-        height: 120px !important;
-      }
-
-      .print-main {
-        padding: 0 8px !important;
-      }
-
-      .print-placeholder {
-        font-size: 12px !important;
-      }
+    .print-sheet-table td {
+      border: 0.12mm solid #000 !important;
+      padding: 0 !important;
     }
 
     @media (max-width: 560px) {
@@ -1323,15 +1291,11 @@ function renderDayGrid() {
 
 function renderPrintArea() {
   const groupedDays = [[1, 2], [3, 4], [5, null]];
-  const projectNameText = formatPrintProjectName(state.projectName || DEFAULT_PROJECT_NAME);
   elements.printArea.innerHTML = groupedDays
     .map((group) => {
       return `
         <div class="print-page">
           <h2 class="print-title">사 진 대 지</h2>
-          <div class="print-project-name">
-            <strong>${escapeHtml(projectNameText)}</strong>
-          </div>
           <table class="print-sheet-table">
             <colgroup>
               <col class="print-col-label">
@@ -1904,9 +1868,4 @@ function escapeAttribute(value) {
 
 function normalizeProjectName(value) {
   return String(value || DEFAULT_PROJECT_NAME).replaceAll("(주)서화", "(주)한화");
-}
-
-function formatPrintProjectName(value) {
-  const text = normalizeProjectName(value).replace(/\s*\(주\).*/, "").trim();
-  return text || normalizeProjectName(value);
 }
