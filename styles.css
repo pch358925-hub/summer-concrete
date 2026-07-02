@@ -122,54 +122,6 @@ p {
   flex-wrap: nowrap;
 }
 
-.month-filter {
-  width: 218px;
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 30px;
-  align-items: end;
-  gap: 4px;
-}
-
-.month-filter-label {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
-}
-
-.month-filter-label span {
-  margin-bottom: 0;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.month-filter-label input {
-  min-height: 30px;
-  padding: 0 8px;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.month-step-button {
-  width: 30px;
-  min-height: 30px;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--ink);
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.month-step-button:hover {
-  border-color: rgba(31, 122, 90, 0.38);
-  background: var(--surface-soft);
-}
-
 .storage-meter {
   width: min(230px, 32vw);
   min-width: 150px;
@@ -807,28 +759,16 @@ input:focus {
   width: 152mm;
   max-width: 100%;
   margin: 0 auto 6mm;
-  display: grid;
-  grid-template-columns: 22.03mm 1fr;
-  min-height: 8mm;
-  align-items: center;
-  border: 0.35mm solid #000;
+  min-height: 6mm;
   font-family: "HCR Batang", "HYMyeongJo-Extra", "함초롬바탕", "Batang", serif;
   font-size: 12pt;
   color: #000;
-}
-
-.print-project-name span {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  border-right: 0.35mm solid #000;
-  white-space: nowrap;
+  text-align: right;
 }
 
 .print-project-name strong {
-  padding: 0 4mm;
   font: inherit;
-  font-weight: 400;
+  font-weight: 900;
   overflow-wrap: anywhere;
 }
 
@@ -912,6 +852,76 @@ input:focus {
 
 .print-empty-row td {
   color: transparent;
+}
+
+@media screen {
+  .print-area {
+    gap: 10px;
+  }
+
+  .print-page {
+    width: min(360px, calc(100vw - 44px));
+    max-width: 100%;
+    padding: 14px 12px;
+  }
+
+  .print-title,
+  .print-project-name,
+  .print-sheet-table {
+    width: 100%;
+  }
+
+  .print-title {
+    margin-bottom: 10px;
+    font-size: 18px;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  .print-project-name {
+    min-height: auto;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+
+  .print-sheet-table {
+    height: auto;
+    font-size: 12px;
+  }
+
+  .print-photo-row {
+    height: 126px;
+  }
+
+  .print-info-row,
+  .print-content-row {
+    height: 24px;
+  }
+
+  .print-photo-frame {
+    width: min(100%, 180px);
+    height: 120px;
+  }
+
+  .print-col-label {
+    width: 52px;
+  }
+
+  .print-col-main {
+    width: auto;
+  }
+
+  .print-col-day {
+    width: 48px;
+  }
+
+  .print-main {
+    padding: 0 8px !important;
+  }
+
+  .print-placeholder {
+    font-size: 12px;
+  }
 }
 
 .toast {
@@ -1041,29 +1051,9 @@ body.viewer-open {
     grid-template-columns: 1fr;
   }
 
-  .list-tools {
-    width: 100%;
-    justify-content: stretch;
-    flex-wrap: wrap;
-  }
-
-  .board-list-section .panel-heading {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .month-filter {
-    width: 100%;
-    grid-template-columns: 34px minmax(0, 1fr) 34px;
-  }
-
-  .month-step-button {
-    width: 34px;
-  }
-
   .storage-meter {
-    order: 2;
-    width: 100%;
+    width: min(180px, 48vw);
+    min-width: 140px;
   }
 
   .summary-list {
