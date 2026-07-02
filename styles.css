@@ -863,6 +863,7 @@ input:focus {
   margin: 0 auto;
   padding: 15mm 0 0;
   background: #fff !important;
+  background-image: linear-gradient(#fff, #fff) !important;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   color: #000 !important;
@@ -905,6 +906,7 @@ input:focus {
   font-family: "휴먼명조", "HCR Batang", "HYMyeongJo-Extra", "Batang", serif;
   font-size: 13pt;
   background: #fff !important;
+  background-image: linear-gradient(#fff, #fff) !important;
   color: #000 !important;
   color-scheme: only light;
   forced-color-adjust: none;
@@ -917,6 +919,7 @@ input:focus {
   padding: 0;
   vertical-align: middle;
   background: #fff !important;
+  background-image: linear-gradient(#fff, #fff) !important;
   color: #000 !important;
 }
 
@@ -952,6 +955,7 @@ input:focus {
   margin: 0 auto;
   overflow: hidden;
   background: #fff !important;
+  background-image: linear-gradient(#fff, #fff) !important;
   color-scheme: only light;
   forced-color-adjust: none;
 }
@@ -1251,6 +1255,7 @@ body.viewer-open {
   html,
   body {
     background: #fff !important;
+    background-image: linear-gradient(#fff, #fff) !important;
     color: #000 !important;
     color-scheme: only light;
     forced-color-adjust: none;
@@ -1271,6 +1276,7 @@ body.viewer-open {
     display: block;
     width: 100%;
     background: #fff !important;
+    background-image: linear-gradient(#fff, #fff) !important;
     color: #000 !important;
     color-scheme: only light;
     forced-color-adjust: none;
@@ -1284,6 +1290,7 @@ body.viewer-open {
     margin: 0;
     padding: 15mm 0 0;
     background: #fff !important;
+    background-image: linear-gradient(#fff, #fff) !important;
     color: #000 !important;
     border: 0;
     box-shadow: none;

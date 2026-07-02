@@ -48,6 +48,7 @@ let filePickerClearTimer = null;
 let pendingRealtimeRefresh = false;
 let activePhotoMutationCount = 0;
 let boardLoadToken = 0;
+let printColorLockTimer = null;
 
 let state = {
   shareCode: "",
@@ -80,6 +81,7 @@ async function init() {
   }
 
   renderAll();
+  startPrintColorLock();
 }
 
 function applyRuntimeLayoutFixes() {
@@ -87,9 +89,13 @@ function applyRuntimeLayoutFixes() {
     element.remove();
   });
 
-  if (document.getElementById("runtimeLayoutFixes")) return;
+  if (document.getElementById("runtimeLayoutFixes")) {
+    ensurePrintColorLockStyle();
+    return;
+  }
   const style = document.createElement("style");
   style.id = "runtimeLayoutFixes";
+  style.className = "darkreader";
   style.textContent = `
     .month-filter {
       display: none !important;
@@ -249,6 +255,134 @@ function applyRuntimeLayoutFixes() {
     }
   `;
   document.head.appendChild(style);
+  ensurePrintColorLockStyle();
+}
+
+function ensurePrintColorLockStyle() {
+  if (document.getElementById("printColorLockStyle")) return;
+
+  const style = document.createElement("style");
+  style.id = "printColorLockStyle";
+  style.className = "darkreader";
+  style.textContent = `
+    #printArea,
+    #printArea .print-page,
+    #printArea .print-sheet-table,
+    #printArea .print-sheet-table td,
+    #printArea .print-photo-frame {
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+      background-image: linear-gradient(#ffffff, #ffffff) !important;
+      color: #000000 !important;
+      color-scheme: only light !important;
+      forced-color-adjust: none !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      filter: none !important;
+      mix-blend-mode: normal !important;
+    }
+
+    #printArea .print-title,
+    #printArea .print-label,
+    #printArea .print-main,
+    #printArea .print-main-text,
+    #printArea .print-day,
+    #printArea .print-placeholder {
+      color: #000000 !important;
+      -webkit-text-fill-color: #000000 !important;
+      text-shadow: none !important;
+      filter: none !important;
+      mix-blend-mode: normal !important;
+    }
+
+    #printArea .print-empty-row td {
+      color: transparent !important;
+      -webkit-text-fill-color: transparent !important;
+    }
+
+    #printArea img {
+      filter: none !important;
+      mix-blend-mode: normal !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function lockPrintColors() {
+  const root = elements.printArea;
+  if (!root) return;
+
+  const whiteBoxSelectors = [
+    ".print-page",
+    ".print-sheet-table",
+    ".print-sheet-table td",
+    ".print-photo-frame",
+  ].join(",");
+  const blackTextSelectors = [
+    ".print-title",
+    ".print-label",
+    ".print-main",
+    ".print-main-text",
+    ".print-day",
+    ".print-placeholder",
+  ].join(",");
+
+  lockPageColorMode();
+  root.setAttribute("data-darkreader-ignore", "");
+  lockLightBox(root);
+  root.querySelectorAll(whiteBoxSelectors).forEach(lockLightBox);
+  root.querySelectorAll(blackTextSelectors).forEach(lockBlackText);
+  root.querySelectorAll(".print-empty-row td").forEach((element) => {
+    element.style.setProperty("color", "transparent", "important");
+    element.style.setProperty("-webkit-text-fill-color", "transparent", "important");
+  });
+  root.querySelectorAll("img").forEach((image) => {
+    image.setAttribute("data-darkreader-ignore", "");
+    image.style.setProperty("filter", "none", "important");
+    image.style.setProperty("mix-blend-mode", "normal", "important");
+  });
+}
+
+function startPrintColorLock() {
+  if (printColorLockTimer) return;
+  lockPrintColors();
+  printColorLockTimer = window.setInterval(lockPrintColors, 1500);
+}
+
+function lockPageColorMode() {
+  [document.documentElement, document.body].forEach((element) => {
+    if (!element) return;
+    element.setAttribute("data-darkreader-ignore", "");
+    element.style.setProperty("background-color", "#ffffff", "important");
+    element.style.setProperty("color", "#000000", "important");
+    element.style.setProperty("color-scheme", "only light", "important");
+    element.style.setProperty("forced-color-adjust", "none", "important");
+    element.style.setProperty("filter", "none", "important");
+    element.style.setProperty("mix-blend-mode", "normal", "important");
+  });
+}
+
+function lockLightBox(element) {
+  element.setAttribute("data-darkreader-ignore", "");
+  element.style.setProperty("background", "#ffffff", "important");
+  element.style.setProperty("background-color", "#ffffff", "important");
+  element.style.setProperty("background-image", "linear-gradient(#ffffff, #ffffff)", "important");
+  element.style.setProperty("color", "#000000", "important");
+  element.style.setProperty("color-scheme", "only light", "important");
+  element.style.setProperty("forced-color-adjust", "none", "important");
+  element.style.setProperty("-webkit-print-color-adjust", "exact", "important");
+  element.style.setProperty("print-color-adjust", "exact", "important");
+  element.style.setProperty("filter", "none", "important");
+  element.style.setProperty("mix-blend-mode", "normal", "important");
+}
+
+function lockBlackText(element) {
+  element.setAttribute("data-darkreader-ignore", "");
+  element.style.setProperty("color", "#000000", "important");
+  element.style.setProperty("-webkit-text-fill-color", "#000000", "important");
+  element.style.setProperty("text-shadow", "none", "important");
+  element.style.setProperty("filter", "none", "important");
+  element.style.setProperty("mix-blend-mode", "normal", "important");
 }
 
 function bindEvents() {
@@ -274,6 +408,7 @@ function bindEvents() {
   });
   elements.clearSearchButton.addEventListener("click", clearBoardSearch);
   elements.printButton.addEventListener("click", handlePrint);
+  window.addEventListener("beforeprint", lockPrintColors);
   elements.newBoardButton.addEventListener("click", createNewBoard);
   elements.prevPourDateButton.addEventListener("click", () => shiftPourDate(-1));
   elements.nextPourDateButton.addEventListener("click", () => shiftPourDate(1));
@@ -1380,6 +1515,9 @@ function renderPrintArea() {
       `;
     })
     .join("");
+  lockPrintColors();
+  window.setTimeout(lockPrintColors, 120);
+  window.setTimeout(lockPrintColors, 600);
 }
 
 function renderPrintBlock(day) {
@@ -1496,11 +1634,14 @@ async function handlePrint() {
   elements.printButton.disabled = true;
   showToast("출력 이미지를 준비하는 중입니다.");
   try {
+    lockPrintColors();
     await ensurePrintImagesReady();
+    lockPrintColors();
     window.print();
   } catch (error) {
     console.error(error);
     showToast("일부 사진 확인 후 인쇄창을 엽니다.");
+    lockPrintColors();
     window.print();
   } finally {
     elements.printButton.disabled = false;
