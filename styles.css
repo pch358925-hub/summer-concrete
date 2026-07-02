@@ -55,11 +55,13 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 10px;
   margin-bottom: 10px;
 }
 
 .topbar-title {
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -83,6 +85,12 @@ h1 {
   font-size: clamp(17px, 3.2vw, 29px);
   line-height: 1.08;
   letter-spacing: 0;
+}
+
+.topbar h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 h2 {
@@ -112,12 +120,14 @@ p {
 }
 
 .topbar-actions {
-  flex: 0 0 auto;
-  flex-direction: row;
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: flex-end;
   gap: 4px;
   margin-left: auto;
   flex-wrap: nowrap;
+  min-width: 174px;
 }
 
 .list-tools {
@@ -293,6 +303,7 @@ input:focus {
 
 .topbar-actions .primary-button,
 .topbar-actions .icon-button {
+  width: 100%;
   min-width: 50px;
 }
 
@@ -837,6 +848,7 @@ input:focus {
   display: grid;
   gap: 18px;
   justify-items: center;
+  color-scheme: only light;
 }
 
 .print-page {
@@ -848,6 +860,8 @@ input:focus {
   background: #fff;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
+  color: #000;
+  color-scheme: only light;
 }
 
 .print-title {
@@ -863,6 +877,7 @@ input:focus {
   text-decoration: underline;
   text-decoration-thickness: 1.2pt;
   text-underline-offset: 3pt;
+  color: #000;
 }
 
 .print-project-name {
@@ -881,13 +896,17 @@ input:focus {
   table-layout: fixed;
   font-family: "휴먼명조", "HCR Batang", "HYMyeongJo-Extra", "Batang", serif;
   font-size: 13pt;
+  background: #fff;
   color: #000;
+  color-scheme: only light;
 }
 
 .print-sheet-table td {
   border: 0.12mm solid #000;
   padding: 0;
   vertical-align: middle;
+  background: #fff;
+  color: #000;
 }
 
 .print-col-label {
@@ -922,6 +941,7 @@ input:focus {
   margin: 0 auto;
   overflow: hidden;
   background: #fff;
+  color-scheme: only light;
 }
 
 .print-photo-frame img {
@@ -943,7 +963,33 @@ input:focus {
 }
 
 .print-main {
+  overflow: hidden;
   padding: 0 1.8mm !important;
+  white-space: normal;
+}
+
+.print-main-text {
+  max-height: 2.22em;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  hyphens: none;
+  line-height: 1.11;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.print-main-text-sm {
+  font-size: 11.5pt;
+  line-height: 1.1;
+}
+
+.print-main-text-xs {
+  font-size: 10pt;
+  line-height: 1.08;
 }
 
 .print-day {
@@ -1051,9 +1097,12 @@ body.viewer-open {
     margin-left: auto;
   }
 
-  .topbar-actions > *,
   .list-tools > * {
     flex: 0 0 auto;
+  }
+
+  .topbar-actions > * {
+    min-width: 0;
   }
 
   .field-grid,
@@ -1129,15 +1178,15 @@ body.viewer-open {
   .topbar-actions .primary-button,
   .topbar-actions .icon-button,
   .panel-heading > .ghost-button {
-    width: auto;
     align-self: flex-end;
   }
 
   .topbar-actions .primary-button,
   .topbar-actions .icon-button {
-    min-width: 46px;
-    min-height: 29px;
-    padding: 0 6px;
+    width: 100%;
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 7px;
   }
 
   .standard-panel-header {
@@ -1163,6 +1212,7 @@ body.viewer-open {
 
   .topbar-actions {
     gap: 3px;
+    min-width: 132px;
   }
 
   .topbar-actions .button-icon {
@@ -1171,7 +1221,7 @@ body.viewer-open {
 
   .topbar-actions .primary-button,
   .topbar-actions .icon-button {
-    min-width: 42px;
+    min-width: 0;
     padding: 0 5px;
   }
 }
@@ -1182,8 +1232,11 @@ body.viewer-open {
     margin: 0;
   }
 
+  html,
   body {
-    background: #fff;
+    background: #fff !important;
+    color: #000 !important;
+    color-scheme: only light;
   }
 
   body * {
@@ -1200,6 +1253,11 @@ body.viewer-open {
     inset: 0 auto auto 0;
     display: block;
     width: 100%;
+    background: #fff !important;
+    color: #000 !important;
+    color-scheme: only light;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .print-page {
@@ -1207,9 +1265,14 @@ body.viewer-open {
     min-height: 297mm;
     margin: 0;
     padding: 15mm 0 0;
+    background: #fff !important;
+    color: #000 !important;
     border: 0;
     box-shadow: none;
+    color-scheme: only light;
     page-break-after: always;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .print-page:last-child {
@@ -1218,5 +1281,24 @@ body.viewer-open {
 
   .print-title {
     margin-top: 0;
+    color: #000 !important;
+  }
+
+  .print-sheet-table,
+  .print-sheet-table td,
+  .print-photo-frame {
+    background: #fff !important;
+    color: #000 !important;
+    color-scheme: only light;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-placeholder {
+    color: #777 !important;
+  }
+
+  .print-empty-row td {
+    color: transparent !important;
   }
 }

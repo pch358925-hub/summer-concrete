@@ -180,6 +180,36 @@ function applyRuntimeLayoutFixes() {
       padding: 0 !important;
     }
 
+    .print-sheet-table td.print-main {
+      overflow: hidden !important;
+      padding: 0 1.8mm !important;
+      white-space: normal !important;
+    }
+
+    .print-main-text {
+      max-height: 2.22em !important;
+      display: -webkit-box !important;
+      overflow: hidden !important;
+      -webkit-box-orient: vertical !important;
+      -webkit-line-clamp: 2 !important;
+      hyphens: none !important;
+      line-height: 1.11 !important;
+      overflow-wrap: normal !important;
+      text-overflow: ellipsis !important;
+      white-space: normal !important;
+      word-break: keep-all !important;
+    }
+
+    .print-main-text-sm {
+      font-size: 11.5pt !important;
+      line-height: 1.1 !important;
+    }
+
+    .print-main-text-xs {
+      font-size: 10pt !important;
+      line-height: 1.08 !important;
+    }
+
     @media (max-width: 560px) {
       .storage-meter {
         width: min(180px, 48vw) !important;
@@ -1332,6 +1362,7 @@ function renderPrintBlock(day) {
 
   const entry = getEntry(day);
   const locationText = state.pourPart || "";
+  const locationTextClass = getPrintMainTextClass(locationText);
   const contentText = "습윤양생";
 
   return `
@@ -1348,14 +1379,32 @@ function renderPrintBlock(day) {
     </tr>
     <tr class="print-info-row">
       <td class="print-label">위&nbsp;&nbsp;치</td>
-      <td class="print-main">&nbsp;${escapeHtml(locationText)}</td>
+      <td class="print-main"><span class="print-main-text${locationTextClass}">${formatPrintMainText(locationText)}</span></td>
       <td class="print-day">${day}일차</td>
     </tr>
     <tr class="print-content-row">
       <td class="print-label">내&nbsp;&nbsp;용</td>
-      <td colspan="2" class="print-main">&nbsp;${escapeHtml(contentText)}</td>
+      <td colspan="2" class="print-main"><span class="print-main-text">${formatPrintMainText(contentText)}</span></td>
     </tr>
   `;
+}
+
+function getPrintMainTextClass(text) {
+  const lengthScore = Array.from(text).reduce((score, char) => {
+    return score + (char.charCodeAt(0) <= 0x7f ? 0.55 : 1);
+  }, 0);
+
+  if (lengthScore > 70) return " print-main-text-xs";
+  if (lengthScore > 52) return " print-main-text-sm";
+  return "";
+}
+
+function formatPrintMainText(value) {
+  const breakAfter = new Set([",", ")", "]", "}"]);
+  return Array.from(String(value)).map((char) => {
+    const breakHint = breakAfter.has(char) ? "<wbr>" : "";
+    return `${escapeHtml(char)}${breakHint}`;
+  }).join("");
 }
 
 function renderUploadedMeta(entry) {
