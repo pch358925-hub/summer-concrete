@@ -1,4 +1,5 @@
 :root {
+  color-scheme: only light;
   --bg: #f4f6f3;
   --surface: #ffffff;
   --surface-soft: #f3f7f5;
@@ -19,6 +20,7 @@
 
 html {
   min-width: 320px;
+  color-scheme: only light;
 }
 
 body {
@@ -849,6 +851,9 @@ input:focus {
   gap: 18px;
   justify-items: center;
   color-scheme: only light;
+  forced-color-adjust: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .print-page {
@@ -857,11 +862,14 @@ input:focus {
   max-width: none;
   margin: 0 auto;
   padding: 15mm 0 0;
-  background: #fff;
+  background: #fff !important;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
-  color: #000;
+  color: #000 !important;
   color-scheme: only light;
+  forced-color-adjust: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .print-title {
@@ -877,7 +885,7 @@ input:focus {
   text-decoration: underline;
   text-decoration-thickness: 1.2pt;
   text-underline-offset: 3pt;
-  color: #000;
+  color: #000 !important;
 }
 
 .print-project-name {
@@ -896,17 +904,20 @@ input:focus {
   table-layout: fixed;
   font-family: "휴먼명조", "HCR Batang", "HYMyeongJo-Extra", "Batang", serif;
   font-size: 13pt;
-  background: #fff;
-  color: #000;
+  background: #fff !important;
+  color: #000 !important;
   color-scheme: only light;
+  forced-color-adjust: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .print-sheet-table td {
   border: 0.12mm solid #000;
   padding: 0;
   vertical-align: middle;
-  background: #fff;
-  color: #000;
+  background: #fff !important;
+  color: #000 !important;
 }
 
 .print-col-label {
@@ -940,8 +951,9 @@ input:focus {
   place-items: center;
   margin: 0 auto;
   overflow: hidden;
-  background: #fff;
+  background: #fff !important;
   color-scheme: only light;
+  forced-color-adjust: none;
 }
 
 .print-photo-frame img {
@@ -952,23 +964,26 @@ input:focus {
 }
 
 .print-placeholder {
-  color: #777;
+  color: #000 !important;
   font-family: "HCR Batang", "휴먼명조", "Batang", serif;
   font-size: 13pt;
 }
 
 .print-label {
+  color: #000 !important;
   text-align: center;
   white-space: nowrap;
 }
 
 .print-main {
+  color: #000 !important;
   overflow: hidden;
   padding: 0 1.8mm !important;
   white-space: normal;
 }
 
 .print-main-text {
+  color: #000 !important;
   max-height: 2.22em;
   display: -webkit-box;
   overflow: hidden;
@@ -993,6 +1008,7 @@ input:focus {
 }
 
 .print-day {
+  color: #000 !important;
   text-align: center;
   white-space: nowrap;
 }
@@ -1237,6 +1253,7 @@ body.viewer-open {
     background: #fff !important;
     color: #000 !important;
     color-scheme: only light;
+    forced-color-adjust: none;
   }
 
   body * {
@@ -1256,6 +1273,7 @@ body.viewer-open {
     background: #fff !important;
     color: #000 !important;
     color-scheme: only light;
+    forced-color-adjust: none;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -1270,6 +1288,7 @@ body.viewer-open {
     border: 0;
     box-shadow: none;
     color-scheme: only light;
+    forced-color-adjust: none;
     page-break-after: always;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -1290,12 +1309,13 @@ body.viewer-open {
     background: #fff !important;
     color: #000 !important;
     color-scheme: only light;
+    forced-color-adjust: none;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .print-placeholder {
-    color: #777 !important;
+    color: #000 !important;
   }
 
   .print-empty-row td {

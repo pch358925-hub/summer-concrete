@@ -124,6 +124,12 @@ function applyRuntimeLayoutFixes() {
       width: 210mm !important;
       min-height: 297mm !important;
       padding: 15mm 0 0 !important;
+      background: #fff !important;
+      color: #000 !important;
+      color-scheme: only light !important;
+      forced-color-adjust: none !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
     .print-title {
@@ -137,6 +143,12 @@ function applyRuntimeLayoutFixes() {
       text-decoration: underline !important;
       text-decoration-thickness: 1.2pt !important;
       text-underline-offset: 3pt !important;
+      background: #fff !important;
+      color: #000 !important;
+      color-scheme: only light !important;
+      forced-color-adjust: none !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
     .print-sheet-table {
@@ -146,7 +158,12 @@ function applyRuntimeLayoutFixes() {
       border-collapse: collapse !important;
       font-family: "휴먼명조", "HCR Batang", "HYMyeongJo-Extra", "Batang", serif !important;
       font-size: 13pt !important;
+      background: #fff !important;
       color: #000 !important;
+      color-scheme: only light !important;
+      forced-color-adjust: none !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
     .print-col-label {
@@ -173,20 +190,34 @@ function applyRuntimeLayoutFixes() {
     .print-photo-frame {
       width: 120mm !important;
       height: 80mm !important;
+      background: #fff !important;
+      color: #000 !important;
+      color-scheme: only light !important;
+      forced-color-adjust: none !important;
     }
 
     .print-sheet-table td {
       border: 0.12mm solid #000 !important;
       padding: 0 !important;
+      background: #fff !important;
+      color: #000 !important;
     }
 
     .print-sheet-table td.print-main {
+      color: #000 !important;
       overflow: hidden !important;
       padding: 0 1.8mm !important;
       white-space: normal !important;
     }
 
+    .print-label,
+    .print-day,
+    .print-placeholder {
+      color: #000 !important;
+    }
+
     .print-main-text {
+      color: #000 !important;
       max-height: 2.22em !important;
       display: -webkit-box !important;
       overflow: hidden !important;
@@ -1379,7 +1410,7 @@ function renderPrintBlock(day) {
     </tr>
     <tr class="print-info-row">
       <td class="print-label">위&nbsp;&nbsp;치</td>
-      <td class="print-main"><span class="print-main-text${locationTextClass}">${formatPrintMainText(locationText)}</span></td>
+      <td class="print-main"><span class="print-main-text${locationTextClass}">${formatPrintMainText(locationText, { breakAfterFirstBracket: true })}</span></td>
       <td class="print-day">${day}일차</td>
     </tr>
     <tr class="print-content-row">
@@ -1390,20 +1421,40 @@ function renderPrintBlock(day) {
 }
 
 function getPrintMainTextClass(text) {
-  const lengthScore = Array.from(text).reduce((score, char) => {
-    return score + (char.charCodeAt(0) <= 0x7f ? 0.55 : 1);
-  }, 0);
+  const lengthScore = getPrintTextLengthScore(text);
 
   if (lengthScore > 70) return " print-main-text-xs";
   if (lengthScore > 52) return " print-main-text-sm";
   return "";
 }
 
-function formatPrintMainText(value) {
-  const breakAfter = new Set([",", ")", "]", "}"]);
-  return Array.from(String(value)).map((char) => {
-    const breakHint = breakAfter.has(char) ? "<wbr>" : "";
-    return `${escapeHtml(char)}${breakHint}`;
+function getPrintTextLengthScore(text) {
+  return Array.from(String(text)).reduce((score, char) => {
+    return score + (char.charCodeAt(0) <= 0x7f ? 0.55 : 1);
+  }, 0);
+}
+
+function formatPrintMainText(value, options = {}) {
+  const chars = Array.from(String(value));
+  const bracketBreaks = new Set([")", "]", "}"]);
+  const hintBreaks = new Set([","]);
+  const shouldBreakAfterBracket = options.breakAfterFirstBracket && getPrintTextLengthScore(value) > 18;
+  let bracketBreakUsed = false;
+
+  return chars.map((char, index) => {
+    const escaped = escapeHtml(char);
+    if (
+      shouldBreakAfterBracket &&
+      !bracketBreakUsed &&
+      bracketBreaks.has(char) &&
+      index < chars.length - 1
+    ) {
+      bracketBreakUsed = true;
+      return `${escaped}<br>`;
+    }
+
+    const breakHint = hintBreaks.has(char) ? "<wbr>" : "";
+    return `${escaped}${breakHint}`;
   }).join("");
 }
 
